@@ -6,13 +6,13 @@ mdp = simpleMDP()
 policy = dict()
 
 states = mdp.get_all_states()
-print(states)
+# print(states)
 
 for s in states:
     actions = mdp.get_possible_actions(s)
     for a in actions:
         next_states = mdp.get_next_states(s, a)
-        print("State: " + s + " action: " + a + " " + "list of possible next states: ", next_states)
+        # print("State: " + s + " action: " + a + " " + "list of possible next states: ", next_states)
 
 for s in states:
     actions = mdp.get_possible_actions(s)
@@ -21,7 +21,7 @@ for s in states:
     for a in actions:
         policy[s][a] = action_prob
 
-print(policy)
+# print(policy)
 
 NUM_OF_ITERATIONS = 1000000
 
@@ -61,6 +61,7 @@ def policy_eval_two_arrays(mdp, policy, gamma, theta):
                     reward = mdp.get_reward(state, action, next_state)
                     next_state_values = going_in_that_direction_prob * (
                             reward + gamma * V[next_state])  # p(s', r|s, a)[r + gamma*V(s')]
+
                     sum_for_all_end_states += next_state_values
                 valueS += prob_to_take_action * sum_for_all_end_states  # PI(a|s) * ...
             deltas[state] = max(deltas[state], valueS - copy_V[state])
@@ -70,7 +71,7 @@ def policy_eval_two_arrays(mdp, policy, gamma, theta):
             break
         # if deltas < theta:
         #     pass
-            # break
+        # break
 
     return V
 
@@ -108,10 +109,15 @@ def policy_eval_in_place(mdp, policy, gamma, theta):
                     reward = mdp.get_reward(state, action, next_state)
                     next_state_values = going_in_that_direction_prob * (
                             reward + gamma * V[next_state])  # p(s', r|s, a)[r + gamma*V(s')]
+                    next_state_values_str = state + "," + action + "," + next_state + ": " + str(
+                        going_in_that_direction_prob) + " * (" + str(reward) + " + " + str(
+                        gamma) + " * " + str(V[next_state]) + ")"
+                    print("fenek:", next_state_values_str)
                     sum_for_all_end_states += next_state_values
                 valueS += prob_to_take_action * sum_for_all_end_states  # PI(a|s) * ...
             # deltas[state] = max(deltas[state], valueS - V[state])
             delta = max(delta, valueS - V[state])
+            print("V(" + state + "):", valueS)
             V[state] = valueS
         assertValues(V)
         if delta < theta:
@@ -121,8 +127,7 @@ def policy_eval_in_place(mdp, policy, gamma, theta):
         #     break
         # if deltas < theta:
         #     pass
-            # break
-
+        # break
 
     return V
 
@@ -132,6 +137,6 @@ V = policy_eval_in_place(mdp, policy, 0.9, 0.0000000001)
 print(V)
 
 assert np.isclose(V['s0'], 1.46785443374683)
-                           # 1.4687121343257736
+# 1.4687121343257736
 assert np.isclose(V['s1'], 4.55336594491180)
 assert np.isclose(V['s2'], 1.68544141660991)
