@@ -72,22 +72,30 @@ def policy_eval_two_arrays(mdp, policy, gamma, theta):
         #     pass
             # break
 
-    # INSERT CODE HERE to evaluate the policy using the 2 array approach
-
     return V
+
+
+def assertValues(V):
+    if np.isclose(V['s0'], 1.46785443374683):
+        print('s0 ok ', V['s0'])
+    if np.isclose(V['s1'], 4.55336594491180):
+        print('s1 ok ', V['s1'])
+    if np.isclose(V['s2'], 1.68544141660991):
+        print('s2 ok ', V['s2'])
 
 
 def policy_eval_in_place(mdp, policy, gamma, theta):
     all_states = mdp.get_all_states()
     V = dict()
-    deltas = dict()
+    # deltas = dict()
     # is_deltas_ok = False
 
     for state in all_states:
-        V[state] = 1
-        deltas[state] = 0
+        V[state] = 0
+        # deltas[state] = 0
 
     for i in range(NUM_OF_ITERATIONS):
+        delta = 0
         for state in all_states:
             valueS = 0
             possible_actions = mdp.get_possible_actions(state)
@@ -102,23 +110,28 @@ def policy_eval_in_place(mdp, policy, gamma, theta):
                             reward + gamma * V[next_state])  # p(s', r|s, a)[r + gamma*V(s')]
                     sum_for_all_end_states += next_state_values
                 valueS += prob_to_take_action * sum_for_all_end_states  # PI(a|s) * ...
-            deltas[state] = max(deltas[state], valueS - V[state])
+            # deltas[state] = max(deltas[state], valueS - V[state])
+            delta = max(delta, valueS - V[state])
             V[state] = valueS
-        if check_if_deltas_ok(deltas, theta):
+        assertValues(V)
+        if delta < theta:
+            print("Delta <= theta")
             break
+        # if check_if_deltas_ok(deltas, theta):
+        #     break
         # if deltas < theta:
         #     pass
             # break
 
-    # INSERT CODE HERE to evaluate the policy using the 2 array approach
 
     return V
 
 
 # V = policy_eval_two_arrays(mdp, policy, 0.9, 0.0001)
-V = policy_eval_in_place(mdp, policy, 0.9, 0.0001)
+V = policy_eval_in_place(mdp, policy, 0.9, 0.0000000001)
 print(V)
 
 assert np.isclose(V['s0'], 1.46785443374683)
+                           # 1.4687121343257736
 assert np.isclose(V['s1'], 4.55336594491180)
 assert np.isclose(V['s2'], 1.68544141660991)
