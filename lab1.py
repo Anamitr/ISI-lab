@@ -148,7 +148,10 @@ def deterministic_policy_eval_in_place(mdp, policy, gamma, theta):
             valueS = 0
             possible_actions = mdp.get_possible_actions(state)
             for action in possible_actions:
-                prob_to_take_action = policy[state][action]
+                if policy[state] is action:
+                    prob_to_take_action = 1
+                else:
+                    prob_to_take_action = 0
                 sum_for_all_end_states = 0
                 next_states_with_prob_dict = mdp.get_next_states(state, action)
                 for next_state in next_states_with_prob_dict.keys():
@@ -225,9 +228,10 @@ def policy_improvement(mdp, policy, value_function, gamma):
                 best_action_value = action_value
         for action, value in action_values.items():
             if value == best_action_value:
-                strategy_per_action[state] = action
-                action_dict = {action: 1}
-                policy[state] = action_dict
+                if action is not policy[state]:
+                    policy_stable = False
+                policy[state] = action
+                break
 
     print("Strategy improvent")
     print(strategy_per_action)
@@ -235,7 +239,7 @@ def policy_improvement(mdp, policy, value_function, gamma):
     return policy_stable
 
 
-policy_improvement(mdp, policy, V, 0.9)
+# policy_improvement(mdp, policy, V, 0.9)
 
 
 def policy_iteration(mdp, gamma, theta):
@@ -258,7 +262,7 @@ def policy_iteration(mdp, gamma, theta):
 
     for s in states:
         actions = mdp.get_possible_actions(s)
-        policy[s] = {actions[0] : 1, actions[1] : 0}
+        policy[s] = actions[0]
 
     V = deterministic_policy_eval_in_place(mdp, policy, gamma, theta)
 
@@ -278,3 +282,11 @@ optimal_policy, optimal_value = policy_iteration(mdp, 0.9, 0.001)
 
 print(optimal_policy)
 print(optimal_value)
+
+assert optimal_policy['s0'] == 'a1'
+assert optimal_policy['s1'] == 'a0'
+assert optimal_policy['s2'] == 'a1'
+
+assert np.isclose(optimal_value['s0'], 3.78536612814300)
+assert np.isclose(optimal_value['s1'], 7.29865364527343)
+assert np.isclose(optimal_value['s2'], 4.20683179007964)
