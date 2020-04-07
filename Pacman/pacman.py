@@ -1,8 +1,8 @@
 import pygame
 import random
-import itertools
 
-from anagram_cal import permutations_with_partial_repetitions
+from Pacman.PacmanState import PacmanState
+from Pacman.anagram_cal import permutations_with_partial_repetitions
 
 LEFT = 0
 DOWN = 1
@@ -112,18 +112,50 @@ class Pacman:
         all_permutations = permutations_with_objects_in_different_places + permutations_with_objects_in_one_place + other_permutations
         print("All permutations length:", len(all_permutations))
         # 2730 + 15 + 14 * 15 * 3
-        pass
 
-    def is_terminal(self, state):
+        pacman_states = []
+        for perm in all_permutations:
+            pacman_states.append(PacmanState(movable_positions, perm))
+
+        return pacman_states
+
+    def is_terminal(self, state: PacmanState):
         """
         return true if state is terminal or false otherwise
         state is terminal when ghost is on the same position as pacman or all capsules are eaten
         """
-        pass
+        result = False
+        is_last_food = False
+        if len(state.food_positions) == 1:
+            is_last_food = True
+        for field in state.fields_setup:
+            if 'p' in field and 'g' in field:
+                result = True
+            elif is_last_food and 'p' in field and '*' in field:
+                result = True
+        return result
 
     def get_possible_actions(self, state):
         """ return a tuple of possible actions in a given state """
-        pass
+        actions = [LEFT, DOWN, RIGHT, UP]
+        possible_actions = []
+
+        width = len(self.board[0])
+        height = len(self.board)
+
+        if state.pacman_position[1] > 0:
+            if self.board[ state.pacman_position[0]][ state.pacman_position[1] - 1] != 'w':
+                possible_actions.append(LEFT)
+        if state.pacman_position[1] + 1 < width:
+            if self.board[ state.pacman_position[0]][ state.pacman_position[1] + 1] != 'w':
+                possible_actions.append(RIGHT)
+        if state.pacman_position[0] > 0:
+            if self.board[ state.pacman_position[0] - 1][ state.pacman_position[1]] != 'w':
+                possible_actions.append(UP)
+        if state.pacman_position[0] + 1 < height:
+            if self.board[ state.pacman_position[0] + 1][ state.pacman_position[1]] != 'w':
+                possible_actions.append(DOWN)
+        return possible_actions
 
     def get_next_states(self, state, action):
         """
@@ -315,7 +347,9 @@ Apply Value Iteration algorithm for Pacman
 '''
 
 # Tests
-pacman.get_all_states()
+all_states = pacman.get_all_states()
+pacman.get_possible_actions(all_states[300])
+pass
 #
 
 done = False
