@@ -1,15 +1,18 @@
 import copy
-
+import json
 import pygame
 import random
 
 from Pacman.PacmanState import PacmanState
 from Pacman.anagram_cal import permutations_with_partial_repetitions
+from Pacman.pacman_util import load_obj, save_obj
+from Pacman.pacman_value_iteration import value_iteration
 
 LEFT = 0
 DOWN = 1
 RIGHT = 2
 UP = 3
+actions = [LEFT, DOWN, RIGHT, UP]
 
 
 class Pacman:
@@ -130,11 +133,20 @@ class Pacman:
         is_last_food = False
         if len(state.food_positions) == 1:
             is_last_food = True
-        for field in state.fields_setup:
-            if 'p' in field and 'g' in field:
+
+        # for field in state.fields_setup:
+        #     if 'p' in field and 'g' in field:
+        #         result = True
+        #     elif is_last_food and 'p' in field and '*' in field:
+        #         result = True
+
+        for ghost_position in state.ghosts_positions:
+            if state.pacman_position == ghost_position:
                 result = True
-            elif is_last_food and 'p' in field and '*' in field:
-                result = True
+
+        if is_last_food and state.pacman_position == state.food_positions[0]:
+            result = True
+
         return result
 
     def get_possible_actions(self, state):
@@ -166,10 +178,10 @@ class Pacman:
 
         next_states = []
         next_state_base = copy.deepcopy(state)
-        
+
         width = len(self.board[0])
         height = len(self.board)
-        
+
         if action == LEFT and state.pacman_position[1] > 0:
             if self.board[state.pacman_position[0]][state.pacman_position[1] - 1] != 'w':
                 next_state_base.pacman_position[1] -= 1
@@ -182,7 +194,7 @@ class Pacman:
         if action == DOWN and state.pacman_position[0] + 1 < height:
             if self.board[state.pacman_position[0] + 1][state.pacman_position[1]] != 'w':
                 next_state_base.pacman_position[0] += 1
-                
+
         # Assume there is only one ghost
         ghost_position = next_state_base.ghosts_positions[0]
         if ghost_position[1] > 0:
@@ -221,7 +233,25 @@ class Pacman:
             -500 for eating ghost
             500 for eating all capsules
         """
-        pass
+        result = 0
+
+        for ghost_position in state.ghosts_positions:
+            if state.pacman_position == ghost_position:
+                return -500
+
+        is_last_food = False
+        if len(state.food_positions) == 1:
+            is_last_food = True
+
+        if is_last_food:
+            if state.pacman_position == state.food_positions[0]:
+                return 500
+        else:
+            for food_position in state.food_positions:
+                if state.pacman_position == food_position:
+                    return 10
+
+        return -1
 
     def step(self, action):
         '''
@@ -378,7 +408,15 @@ class Pacman:
         Function returns current state of the game
         :return: state
         '''
-        pass
+        pacman_position = [self.player_pos['y'], self.player_pos['x']]
+        ghosts_positions = [[ghost_pos['y'], ghost_pos['x']] for ghost_pos in self.ghosts]
+        food_positions = [[food_pos['y'], food_pos['x']] for food_pos in self.foods]
+        state = PacmanState()
+        state.set_values(pacman_position, ghosts_positions, food_positions)
+        return state
+
+    def get_state(self):
+        return self.__get_state()
 
 
 board = ["   g",
@@ -396,14 +434,25 @@ Apply Value Iteration algorithm for Pacman
 '''
 
 # Tests
-all_states = pacman.get_all_states()
-pacman.get_possible_actions(all_states[300])
-
-next_states = pacman.get_next_states(all_states[2000], LEFT).keys()
-for next_state in next_states:
-    pass
+# all_states = pacman.get_all_states()
+# pacman.get_possible_actions(all_states[300])
+#
+# next_states = pacman.get_next_states(all_states[2000], LEFT).keys()
+# for next_state in next_states:
+#     pass
 #
 
+# #Calculate and save
+# optimal_policy, optimal_value = value_iteration(pacman, 0.9, 0.001)
+# print("Value iteration done")
+#
+# save_obj(optimal_policy, "results/optimal_policy")
+# save_obj(optimal_value, "results/optimal_value")
+
+# Load and play
+optimal_policy = load_obj('results/optimal_policy')
+
+state = pacman.get_state()
 done = False
 
 while not done:
@@ -416,7 +465,8 @@ while not done:
     '''
 
     # to be done
+    action = optimal_policy[state]
 
-    # state, reward, done, score = pacman.step(action)
+    state, reward, done, score = pacman.step(action)
     # print(score)
     clock.tick(5)
