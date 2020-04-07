@@ -1,3 +1,5 @@
+import copy
+
 import pygame
 import random
 
@@ -137,32 +139,79 @@ class Pacman:
 
     def get_possible_actions(self, state):
         """ return a tuple of possible actions in a given state """
-        actions = [LEFT, DOWN, RIGHT, UP]
         possible_actions = []
 
         width = len(self.board[0])
         height = len(self.board)
 
         if state.pacman_position[1] > 0:
-            if self.board[ state.pacman_position[0]][ state.pacman_position[1] - 1] != 'w':
+            if self.board[state.pacman_position[0]][state.pacman_position[1] - 1] != 'w':
                 possible_actions.append(LEFT)
         if state.pacman_position[1] + 1 < width:
-            if self.board[ state.pacman_position[0]][ state.pacman_position[1] + 1] != 'w':
+            if self.board[state.pacman_position[0]][state.pacman_position[1] + 1] != 'w':
                 possible_actions.append(RIGHT)
         if state.pacman_position[0] > 0:
-            if self.board[ state.pacman_position[0] - 1][ state.pacman_position[1]] != 'w':
+            if self.board[state.pacman_position[0] - 1][state.pacman_position[1]] != 'w':
                 possible_actions.append(UP)
         if state.pacman_position[0] + 1 < height:
-            if self.board[ state.pacman_position[0] + 1][ state.pacman_position[1]] != 'w':
+            if self.board[state.pacman_position[0] + 1][state.pacman_position[1]] != 'w':
                 possible_actions.append(DOWN)
         return possible_actions
 
-    def get_next_states(self, state, action):
+    def get_next_states(self, state: PacmanState, action):
         """
         return a set of possible next states and probabilities of moving into them
         assume that ghost can move in each possible direction with the same probability, ghost cannot stay in place
         """
-        pass
+
+        next_states = []
+        next_state_base = copy.deepcopy(state)
+        
+        width = len(self.board[0])
+        height = len(self.board)
+        
+        if action == LEFT and state.pacman_position[1] > 0:
+            if self.board[state.pacman_position[0]][state.pacman_position[1] - 1] != 'w':
+                next_state_base.pacman_position[1] -= 1
+        if action == RIGHT and state.pacman_position[1] + 1 < width:
+            if self.board[state.pacman_position[0]][state.pacman_position[1] + 1] != 'w':
+                next_state_base.pacman_position[1] += 1
+        if action == UP and state.pacman_position[0] > 0:
+            if self.board[state.pacman_position[0] - 1][state.pacman_position[1]] != 'w':
+                next_state_base.pacman_position[0] -= 1
+        if action == DOWN and state.pacman_position[0] + 1 < height:
+            if self.board[state.pacman_position[0] + 1][state.pacman_position[1]] != 'w':
+                next_state_base.pacman_position[0] += 1
+                
+        # Assume there is only one ghost
+        ghost_position = next_state_base.ghosts_positions[0]
+        if ghost_position[1] > 0:
+            if self.board[ghost_position[0]][ghost_position[1] - 1] != 'w':
+                new_next_state = copy.deepcopy(next_state_base)
+                new_next_state.ghosts_positions[0][1] -= 1
+                next_states.append(new_next_state)
+        if ghost_position[1] + 1 < width:
+            if self.board[ghost_position[0]][ghost_position[1] + 1] != 'w':
+                new_next_state = copy.deepcopy(next_state_base)
+                new_next_state.ghosts_positions[0][1] += 1
+                next_states.append(new_next_state)
+        if ghost_position[0] > 0:
+            if self.board[ghost_position[0] - 1][ghost_position[1]] != 'w':
+                new_next_state = copy.deepcopy(next_state_base)
+                new_next_state.ghosts_positions[0][0] -= 1
+                next_states.append(new_next_state)
+        if ghost_position[0] + 1 < height:
+            if self.board[ghost_position[0] + 1][ghost_position[1]] != 'w':
+                new_next_state = copy.deepcopy(next_state_base)
+                new_next_state.ghosts_positions[0][0] += 1
+                next_states.append(new_next_state)
+
+        prob = 1 / len(next_states)
+        next_states_dict = {}
+        for next_state in next_states:
+            next_states_dict[next_state] = prob
+
+        return next_states_dict
 
     def get_reward(self, state, action, next_state):
         """
@@ -349,7 +398,10 @@ Apply Value Iteration algorithm for Pacman
 # Tests
 all_states = pacman.get_all_states()
 pacman.get_possible_actions(all_states[300])
-pass
+
+next_states = pacman.get_next_states(all_states[2000], LEFT).keys()
+for next_state in next_states:
+    pass
 #
 
 done = False
