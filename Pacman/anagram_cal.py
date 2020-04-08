@@ -1,6 +1,9 @@
 import time
 
 
+# Used for efficient generating "permutations with partial repetitions",
+# such states where every object is on a separate field
+
 def anagrams(word):
     """ Generate all of the anagrams of a word. """
     if len(word) < 2:
@@ -12,18 +15,7 @@ def anagrams(word):
                     yield j + letter
 
 
-if __name__ == "__main__":
-    start = time.time()
-    all_permutations = []
-    for i in anagrams(''.join(['p', ' ', ' ', ' ', 'g', ' ', ' ', ' ', '*', ' ', ' ', ' ', ' ', ' ', ' '])):
-        print(i)
-        all_permutations.append(i)
-    end = time.time()
-    elapsed = end - start
-    print("Time:", elapsed)
-
-
-def permutations_with_partial_repetitions(list_to_permutate : list):
+def permutations_with_partial_repetitions(list_to_permutate: list):
     all_permutations = []
     for i in anagrams(''.join(list_to_permutate)):
         all_permutations.append(i)

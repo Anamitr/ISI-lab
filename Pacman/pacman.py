@@ -1,7 +1,7 @@
 import copy
-import json
-import pygame
 import random
+
+import pygame
 
 from Pacman.PacmanState import PacmanState
 from Pacman.anagram_cal import permutations_with_partial_repetitions
@@ -66,7 +66,6 @@ class Pacman:
         """ return a list of all possible states """
         num_of_ghosts = 0
         num_of_food = 0
-        # num_of_empty
         movable_positions = []
         list_of_fields = ['p']
         list_of_objects = ['p']
@@ -94,10 +93,6 @@ class Pacman:
         print("Objects:", list_of_fields)
         positions_length = len(movable_positions)
 
-        # Wygeneruj permutacje tak żeby nie trwało to miliona lat
-
-        # all_permutations = list(itertools.permutations(list_of_objects))
-        # all_permutations = ["".join(perm) for perm in itertools.permutations(list_of_objects)]
         permutations_with_objects_in_different_places = permutations_with_partial_repetitions(list_of_fields)
         empty_list = [' '] * 15
         permutations_with_objects_in_one_place = [empty_list[:i] + ['pg*'] + empty_list[(i + 1):] for i in
@@ -117,6 +112,7 @@ class Pacman:
         all_permutations = permutations_with_objects_in_different_places + permutations_with_objects_in_one_place + other_permutations
         print("All permutations length:", len(all_permutations))
         # 2730 + 15 + 14 * 15 * 3
+        # 2730 + 15 + 630 = 3375
 
         pacman_states = []
         for perm in all_permutations:
@@ -133,12 +129,6 @@ class Pacman:
         is_last_food = False
         if len(state.food_positions) == 1:
             is_last_food = True
-
-        # for field in state.fields_setup:
-        #     if 'p' in field and 'g' in field:
-        #         result = True
-        #     elif is_last_food and 'p' in field and '*' in field:
-        #         result = True
 
         for ghost_position in state.ghosts_positions:
             if state.pacman_position == ghost_position:
@@ -197,26 +187,31 @@ class Pacman:
 
         # Assume there is only one ghost
         ghost_position = next_state_base.ghosts_positions[0]
-        if ghost_position[1] > 0:
-            if self.board[ghost_position[0]][ghost_position[1] - 1] != 'w':
-                new_next_state = copy.deepcopy(next_state_base)
-                new_next_state.ghosts_positions[0][1] -= 1
-                next_states.append(new_next_state)
-        if ghost_position[1] + 1 < width:
-            if self.board[ghost_position[0]][ghost_position[1] + 1] != 'w':
-                new_next_state = copy.deepcopy(next_state_base)
-                new_next_state.ghosts_positions[0][1] += 1
-                next_states.append(new_next_state)
-        if ghost_position[0] > 0:
-            if self.board[ghost_position[0] - 1][ghost_position[1]] != 'w':
-                new_next_state = copy.deepcopy(next_state_base)
-                new_next_state.ghosts_positions[0][0] -= 1
-                next_states.append(new_next_state)
-        if ghost_position[0] + 1 < height:
-            if self.board[ghost_position[0] + 1][ghost_position[1]] != 'w':
-                new_next_state = copy.deepcopy(next_state_base)
-                new_next_state.ghosts_positions[0][0] += 1
-                next_states.append(new_next_state)
+
+        # Check if pacman didn't run into ghost
+        if next_state_base.pacman_position == ghost_position:
+            next_states.append(next_state_base)
+        else:
+            if ghost_position[1] > 0:
+                if self.board[ghost_position[0]][ghost_position[1] - 1] != 'w':
+                    new_next_state = copy.deepcopy(next_state_base)
+                    new_next_state.ghosts_positions[0][1] -= 1
+                    next_states.append(new_next_state)
+            if ghost_position[1] + 1 < width:
+                if self.board[ghost_position[0]][ghost_position[1] + 1] != 'w':
+                    new_next_state = copy.deepcopy(next_state_base)
+                    new_next_state.ghosts_positions[0][1] += 1
+                    next_states.append(new_next_state)
+            if ghost_position[0] > 0:
+                if self.board[ghost_position[0] - 1][ghost_position[1]] != 'w':
+                    new_next_state = copy.deepcopy(next_state_base)
+                    new_next_state.ghosts_positions[0][0] -= 1
+                    next_states.append(new_next_state)
+            if ghost_position[0] + 1 < height:
+                if self.board[ghost_position[0] + 1][ghost_position[1]] != 'w':
+                    new_next_state = copy.deepcopy(next_state_base)
+                    new_next_state.ghosts_positions[0][0] += 1
+                    next_states.append(new_next_state)
 
         prob = 1 / len(next_states)
         next_states_dict = {}
@@ -433,21 +428,12 @@ pacman = Pacman(board)
 Apply Value Iteration algorithm for Pacman
 '''
 
-# Tests
-# all_states = pacman.get_all_states()
-# pacman.get_possible_actions(all_states[300])
-#
-# next_states = pacman.get_next_states(all_states[2000], LEFT).keys()
-# for next_state in next_states:
-#     pass
-#
+# Calculate and save
+optimal_policy, optimal_value = value_iteration(pacman, 0.9, 0.001)
+print("Value iteration done")
 
-# #Calculate and save
-# optimal_policy, optimal_value = value_iteration(pacman, 0.9, 0.001)
-# print("Value iteration done")
-#
-# save_obj(optimal_policy, "results/optimal_policy")
-# save_obj(optimal_value, "results/optimal_value")
+save_obj(optimal_policy, "results/optimal_policy")
+save_obj(optimal_value, "results/optimal_value")
 
 # Load and play
 optimal_policy = load_obj('results/optimal_policy')
