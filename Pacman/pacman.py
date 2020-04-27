@@ -7,6 +7,8 @@ from Pacman.PacmanState import PacmanState
 from Pacman.anagram_cal import permutations_with_partial_repetitions
 from Pacman.pacman_util import load_obj, save_obj
 from Pacman.pacman_value_iteration import value_iteration
+from Pacman.qlearning import QLearningAgent
+from lab2 import play_and_train
 
 LEFT = 0
 DOWN = 1
@@ -24,6 +26,8 @@ class Pacman:
 
         self.player_image = pygame.transform.scale(pygame.image.load("assets/pacman.png"), (30, 30))
         self.ghost_image = pygame.transform.scale(pygame.image.load("assets/red_ghost.png"), (30, 30))
+
+        self.display_mode_on = True
 
         self.board = board
         self.cell_size = 60
@@ -51,16 +55,17 @@ class Pacman:
                     food['y'] = y
                     self.foods.append(food)
 
-        self.init_foods = self.foods.copy()
-        self.init_ghosts = self.ghosts.copy()
+        self.init_foods = copy.deepcopy(self.foods)
+        self.init_ghosts = copy.deepcopy(self.ghosts)
         self.__draw_board()
 
     def reset(self):
         """ resets state of the environment """
-        self.init_foods = self.foods.copy()
-        self.init_ghosts = self.ghosts.copy()
-        self.init_player_pos = self.player_pos.copy()
+        self.foods = copy.deepcopy(self.init_foods)
+        self.ghosts = copy.deepcopy(self.init_ghosts)
+        self.player_pos = self.init_player_pos.copy()
         self.score = 0
+        return self.__get_state()
 
     def get_all_states(self):
         """ return a list of all possible states """
@@ -365,38 +370,39 @@ class Pacman:
         '''
         Function displays current state of the board. Do not change this code
         '''
+        if self.display_mode_on:
+            self.screen.fill((0, 0, 0))
 
-        self.screen.fill((0, 0, 0))
+            y = 0
 
-        y = 0
+            for line in board:
+                x = 0
+                for obj in line:
+                    if obj == 'w':
+                        color = (0, 255, 255)
+                        pygame.draw.rect(self.screen, color, pygame.Rect(x, y, 60, 60))
+                    x += 60
+                y += 60
 
-        for line in board:
-            x = 0
-            for obj in line:
-                if obj == 'w':
-                    color = (0, 255, 255)
-                    pygame.draw.rect(self.screen, color, pygame.Rect(x, y, 60, 60))
-                x += 60
-            y += 60
+            color = (255, 255, 0)
+            # pygame.draw.rect(self.screen, color, pygame.Rect(self.player_pos['x'] * self.cell_size + 15, self.player_pos['y'] * self.cell_size + 15, 30, 30))
+            self.screen.blit(self.player_image,
+                             (self.player_pos['x'] * self.cell_size + 15, self.player_pos['y'] * self.cell_size + 15))
 
-        color = (255, 255, 0)
-        # pygame.draw.rect(self.screen, color, pygame.Rect(self.player_pos['x'] * self.cell_size + 15, self.player_pos['y'] * self.cell_size + 15, 30, 30))
-        self.screen.blit(self.player_image,
-                         (self.player_pos['x'] * self.cell_size + 15, self.player_pos['y'] * self.cell_size + 15))
+            color = (255, 0, 0)
+            for ghost in self.ghosts:
+                # pygame.draw.rect(self.screen, color, pygame.Rect(ghost['x'] * self.cell_size + 15, ghost['y'] * self.cell_size + 15, 30, 30))
+                self.screen.blit(self.ghost_image,
+                                 (ghost['x'] * self.cell_size + 15, ghost['y'] * self.cell_size + 15))
 
-        color = (255, 0, 0)
-        for ghost in self.ghosts:
-            # pygame.draw.rect(self.screen, color, pygame.Rect(ghost['x'] * self.cell_size + 15, ghost['y'] * self.cell_size + 15, 30, 30))
-            self.screen.blit(self.ghost_image,
-                             (ghost['x'] * self.cell_size + 15, ghost['y'] * self.cell_size + 15))
+            color = (255, 255, 255)
 
-        color = (255, 255, 255)
+            for food in self.foods:
+                pygame.draw.ellipse(self.screen, color,
+                                    pygame.Rect(food['x'] * self.cell_size + 25, food['y'] * self.cell_size + 25, 10,
+                                                10))
 
-        for food in self.foods:
-            pygame.draw.ellipse(self.screen, color,
-                                pygame.Rect(food['x'] * self.cell_size + 25, food['y'] * self.cell_size + 25, 10, 10))
-
-        pygame.display.flip()
+            pygame.display.flip()
 
     def __get_state(self):
         '''
@@ -413,46 +419,77 @@ class Pacman:
     def get_state(self):
         return self.__get_state()
 
+    def turn_off_display(self):
+        self.display_mode_on = False
 
-board = ["   g",
-         " ww ",
-         " w* ",
-         " ww ",
-         "p   "]
+    def turn_on_display(self):
+        self.display_mode_on = True
+
+
+board = ["*   g",
+         " www ",
+         " w*  ",
+         " www ",
+         "p    "]
 
 clock = pygame.time.Clock()
 
 pacman = Pacman(board)
+pacman.reset()
 
 '''
 Apply Value Iteration algorithm for Pacman
 '''
 
 # Calculate and save
-optimal_policy, optimal_value = value_iteration(pacman, 0.9, 0.001)
-print("Value iteration done")
-
-save_obj(optimal_policy, "results/optimal_policy")
-save_obj(optimal_value, "results/optimal_value")
+# optimal_policy, optimal_value = value_iteration(pacman, 0.9, 0.001)
+# print("Value iteration done")
+#
+# save_obj(optimal_policy, "results/optimal_policy")
+# save_obj(optimal_value, "results/optimal_value")
 
 # Load and play
-optimal_policy = load_obj('results/optimal_policy')
+# optimal_policy = load_obj('results/optimal_policy')
 
-state = pacman.get_state()
-done = False
+'''
+Apply Q-Learning algorithm for Pacman
+'''
 
-while not done:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            done = True
 
-    '''
-    move pacman according to the policy from Value Iteration
-    '''
+def train_q_learing_agent(pacman):
+    agent = QLearningAgent(alpha=0.1, epsilon=0.1, discount=0.99,
+                           get_legal_actions=pacman.get_possible_actions)
 
-    # to be done
-    action = optimal_policy[state]
+    pacman.turn_off_display()
+    for i in range(10000):
+        play_and_train(pacman, agent)
+        print(i)
+    pacman.turn_on_display()
+    return agent
 
-    state, reward, done, score = pacman.step(action)
-    # print(score)
-    clock.tick(5)
+
+def test_and_display(pacman, agent):
+    pacman.reset()
+    state = pacman.get_state()
+    done = False
+
+    while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                done = True
+
+        '''
+        move pacman according to the policy from Value Iteration
+        '''
+
+        # to be done
+        action = agent.get_action(state)
+
+        state, reward, done, score = pacman.step(action)
+        # print(score)
+        clock.tick(5)
+
+
+agent = train_q_learing_agent(pacman)
+for i in range(5):
+    test_and_display(pacman, agent)
