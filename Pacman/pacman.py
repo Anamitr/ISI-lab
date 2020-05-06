@@ -5,10 +5,11 @@ import pygame
 
 from Pacman.PacmanState import PacmanState
 from Pacman.anagram_cal import permutations_with_partial_repetitions
+from Pacman.finding_path_util import find_shortest_path
+from Pacman.linear_approximation import LinearApproximationAgent
 from Pacman.pacman_util import load_obj, save_obj
 from Pacman.pacman_value_iteration import value_iteration
 from Pacman.qlearning import QLearningAgent
-from lab2 import play_and_train
 
 LEFT = 0
 DOWN = 1
@@ -37,6 +38,7 @@ class Pacman:
         self.ghosts = []
         self.foods = []
         self.score = 0
+        self.movable_positions = self.get_movable_positions()
         for y in range(len(self.board)):
             for x in range(len(self.board[0])):
                 if self.board[y][x] == 'p':
@@ -124,6 +126,17 @@ class Pacman:
             pacman_states.append(PacmanState(movable_positions, perm))
 
         return pacman_states
+
+    def get_movable_positions(self):
+        movable_positions = []
+        for y in range(0, len(board)):
+            row = board[y]
+            for x in range(0, len(row)):
+                if board[y][x] == 'w':
+                    continue
+                else:
+                    movable_positions.append((y, x))
+        return movable_positions
 
     def is_terminal(self, state: PacmanState):
         """
@@ -425,6 +438,31 @@ class Pacman:
     def turn_on_display(self):
         self.display_mode_on = True
 
+    def get_field_moves_graph(self):
+        width = len(self.board[0])
+        height = len(self.board)
+
+        graph = {}
+        state = PacmanState()
+        for movable_pos in self.movable_positions:
+            state.pacman_position = movable_pos
+            # graph[movable_pos] = self.get_possible_actions(state)
+            possible_next_pos = []
+            if state.pacman_position[1] > 0:
+                if self.board[state.pacman_position[0]][state.pacman_position[1] - 1] != 'w':
+                    possible_next_pos.append((state.pacman_position[0], state.pacman_position[1] - 1))
+            if state.pacman_position[1] + 1 < width:
+                if self.board[state.pacman_position[0]][state.pacman_position[1] + 1] != 'w':
+                    possible_next_pos.append((state.pacman_position[0], state.pacman_position[1] + 1))
+            if state.pacman_position[0] > 0:
+                if self.board[state.pacman_position[0] - 1][state.pacman_position[1]] != 'w':
+                    possible_next_pos.append((state.pacman_position[0] - 1, state.pacman_position[1]))
+            if state.pacman_position[0] + 1 < height:
+                if self.board[state.pacman_position[0] + 1][state.pacman_position[1]] != 'w':
+                    possible_next_pos.append((state.pacman_position[0] + 1, state.pacman_position[1]))
+            graph[movable_pos] = possible_next_pos
+        return graph
+
 
 board = ["*   g",
          " www ",
@@ -432,10 +470,40 @@ board = ["*   g",
          " www ",
          "p    "]
 
+# board = ["    g",
+#          " www ",
+#          " w*  ",
+#          " www ",
+#          "p    "]
+
 clock = pygame.time.Clock()
 
 pacman = Pacman(board)
 pacman.reset()
+
+
+def play_and_train(env, agent):
+    total_reward = 0.0
+    state = env.reset()
+
+    done = False
+    action = agent.get_action(state)
+
+    while not done:
+        # get agent to pick action given state state.
+
+        next_state, reward, done, _ = env.step(action)
+
+        # train (update) agent for state
+        action = agent.update(state, action, reward, next_state)
+
+        state = next_state
+        total_reward += reward
+        if done:
+            break
+
+    return total_reward
+
 
 '''
 Apply Value Iteration algorithm for Pacman
@@ -455,13 +523,56 @@ Apply Value Iteration algorithm for Pacman
 Apply Q-Learning algorithm for Pacman
 '''
 
+# def train_q_learing_agent(pacman):
+#     agent = QLearningAgent(alpha=0.1, epsilon=0.1, discount=0.99,
+#                            get_legal_actions=pacman.get_possible_actions)
+#
+#     pacman.turn_off_display()
+#     for i in range(10000):
+#         play_and_train(pacman, agent)
+#         print(i)
+#     pacman.turn_on_display()
+#     return agent
+#
+#
+# def test_and_display(pacman, agent):
+#     pacman.reset()
+#     state = pacman.get_state()
+#     done = False
+#
+#     while not done:
+#         for event in pygame.event.get():
+#             if event.type == pygame.QUIT:
+#                 done = True
+#
+#         '''
+#         move pacman according to the policy from Value Iteration
+#         '''
+#
+#         # to be done
+#         action = agent.get_action(state)
+#
+#         state, reward, done, score = pacman.step(action)
+#         # print(score)
+#         clock.tick(5)
+#
+#
+# agent = train_q_learing_agent(pacman)
+# for i in range(5):
+#     test_and_display(pacman, agent)
+
+'''
+Apply Linear Approximation algorithm for Pacman
+'''
+
 
 def train_q_learing_agent(pacman):
-    agent = QLearningAgent(alpha=0.1, epsilon=0.1, discount=0.99,
-                           get_legal_actions=pacman.get_possible_actions)
+    agent = LinearApproximationAgent(alpha=0.2, epsilon=0.05, discount=0.8,
+                                     get_legal_actions=pacman.get_possible_actions,
+                                     movable_positions_graph=pacman.get_field_moves_graph())
 
     pacman.turn_off_display()
-    for i in range(10000):
+    for i in range(1000):
         play_and_train(pacman, agent)
         print(i)
     pacman.turn_on_display()
@@ -486,10 +597,11 @@ def test_and_display(pacman, agent):
         action = agent.get_action(state)
 
         state, reward, done, score = pacman.step(action)
-        # print(score)
-        clock.tick(5)
+        if done:
+            print(score)
+        clock.tick(0)
 
 
 agent = train_q_learing_agent(pacman)
-for i in range(5):
-    test_and_display(pacman, agent)
+for i in range(10):
+    test_and_display(pacman, agent)  # ~7/10 wins or better
