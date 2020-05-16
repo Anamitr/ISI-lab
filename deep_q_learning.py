@@ -1,19 +1,15 @@
-from collections import deque, defaultdict
-import gym
-import numpy as np
 import random
 import time as tm
-from tensorflow import keras
-from tensorflow.keras import layers
+from collections import deque
 
-from keras import Model, Input
+import numpy as np
+from keras import Model
+from keras.layers import Dense
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 
 from env.FrozenLakeMDP import frozenLake
-from env.FrozenLakeMDPExtended import frozenLakeExtended
 
 
 class DQNAgent:
@@ -26,17 +22,7 @@ class DQNAgent:
         self.epsilon_decay = 0.999
         self.learning_rate = learning_rate
         self.model = model
-
         self.get_legal_actions = get_legal_actions
-        # self._qvalues = defaultdict(lambda: defaultdict(lambda: 0))
-
-    # def get_qvalue(self, state, action):
-    #     """ Returns Q(state,action) """
-    #     return self._qvalues[state][action]
-    #
-    # def set_qvalue(self, state, action, value):
-    #     """ Sets the Qvalue for [state,action] to the given value """
-    #     self._qvalues[state][action] = value
 
     def remember(self, state, action, reward, next_state, done):
         # Function adds information to the memory about last action and its results
@@ -64,8 +50,6 @@ class DQNAgent:
         if len(possible_actions) == 0:
             return None
 
-        # self.lower_epsilon()
-        # agent parameters:
         epsilon = self.epsilon
 
         #
@@ -92,26 +76,6 @@ class DQNAgent:
         if len(possible_actions) == 0:
             return None
 
-        #
-        # INSERT CODE HERE to get best possible action in a given state (remember to break ties randomly)
-        #
-
-        # best_action_value = self.get_qvalue(state, possible_actions[0])
-        # best_actions = [possible_actions[0]]
-        # for action in possible_actions[1:]:
-        #     value = self.get_qvalue(state, action)
-        #     if value > best_action_value:
-        #         best_actions = [action]
-        #         best_action_value = value
-        #     elif value == best_action_value:
-        #         best_actions.append(action)
-        #
-        # best_action = random.choice(best_actions)
-        #
-        # return best_action
-
-        self.model.predict(state)
-
         return np.argmax(self.model.predict(state))
 
     def lower_epsilon(self):
@@ -136,15 +100,14 @@ class DQNAgent:
         # INSERT CODE HERE to train network
         #
 
-        # batch_size = 32
-        # if len(self.memory) < batch_size:
-        #     return
+        if len(self.memory) < batch_size:
+            return
 
-        samples = random.sample(self.memory, batch_size)
+        info_sets = random.sample(self.memory, batch_size)
         states_list = []
         targets_list = []
-        for sample in samples:
-            state, action, reward, next_state, done = sample
+        for info_set in info_sets:
+            state, action, reward, next_state, done = info_set
             states_list.append(state.flatten())
             target = self.model.predict(state)
             if done:
@@ -154,36 +117,11 @@ class DQNAgent:
                 target[0][action] = reward + Q_future * self.gamma
             targets_list.append(target.flatten())
 
-        states_array = np.array(states_list)  # .flatten() .reshape(batch_size, -1)
-        targets_array = np.array(targets_list)  # .flatten() # .reshape(batch_size, -1)
+        states_array = np.array(states_list)
+        targets_array = np.array(targets_list)
 
-        # self.model.fit(states_array, targets_array, epochs=1, verbose=0)
-        # targets_array = to_categorical(targets_array)
         self.model.train_on_batch(states_array, targets_array)
-
         self.lower_epsilon()
-
-
-def create_model(state_size, action_size, learning_rate):
-    model = Sequential()
-    # model.add(Input(shape=(state_size,), name="model_input"))
-    model.add(Dense(16, input_dim=state_size, activation="relu"))
-    model.add(Dense(32, activation="relu"))
-    model.add(Dense(16, activation="relu"))
-    model.add(Dense(action_size))  # wyjście
-    model.compile(loss="mean_squared_error",
-                  optimizer=Adam(lr=learning_rate))
-
-    # model = keras.Sequential([
-    #     keras.Input(shape=(state_size)),
-    #     layers.Dense(16, activation='relu'),
-    #     layers.Dense(32, activation='relu'),
-    #     layers.Dense(16, activation='relu'),
-    #     layers.Dense(action_size),
-    # ])
-    # opt = keras.optimizers.Adam(learning_rate=learning_rate)
-    # model.compile(loss='mse', optimizer=opt)
-    return model
 
 
 env = frozenLake("4x4")
@@ -192,21 +130,20 @@ state_size = env.get_number_of_states()
 action_size = len(env.get_possible_actions(None))
 learning_rate = 0.001
 
-model = create_model(state_size, action_size, learning_rate)
+model = Sequential()
+model.add(Dense(16, input_dim=state_size, activation="relu"))
+model.add(Dense(32, activation="relu"))
+model.add(Dense(16, activation="relu"))
+model.add(Dense(action_size))  # wyjście
+model.compile(loss="mean_squared_error",
+              optimizer=Adam(lr=learning_rate))
 
 agent = DQNAgent(action_size, learning_rate, model, get_legal_actions=env.get_possible_actions)
-
-# agent.epsilon = 0.75
 
 done = False
 batch_size = 64
 EPISODES = 1000
 counter = 0
-
-
-def reshape_state(state):
-    return np.array([state]).reshape(1, 1)
-
 
 for e in range(EPISODES):
     start = tm.time()
@@ -218,11 +155,7 @@ for e in range(EPISODES):
         #
         # INSERT CODE HERE to prepare appropriate format of the state for network
         #
-        # state = env_state.reshape(1, 2)
-        # state = reshape_state(env_state)
-        # state = to_categorical(env_state, num_classes=state_size)
-        state = np.zeros((1, state_size))
-        state[0][env_state] = 1
+        state = np.array([to_categorical(env_state, num_classes=state_size)])
 
         for time in range(500):
             action = agent.get_action(state)
@@ -232,10 +165,7 @@ for e in range(EPISODES):
             #
             # INSERT CODE HERE to prepare appropriate format of the next state for network
             #
-            # next_state = reshape_state(next_state)
-            # next_state = to_categorical(next_state, num_classes=state_size)
-            next_state = np.zeros((1, state_size))
-            next_state[0][next_state_env] = 1
+            next_state = np.array([to_categorical(next_state_env, num_classes=state_size)])
 
             # add to experience memory
             agent.remember(state, action, reward, next_state, done)
