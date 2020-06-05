@@ -9,7 +9,6 @@ from Pacman.finding_path_util import find_shortest_path
 from Pacman.linear_approximation import LinearApproximationAgent
 from Pacman.pacman_util import load_obj, save_obj
 from Pacman.pacman_value_iteration import value_iteration
-from Pacman.qlearning import QLearningAgent
 
 LEFT = 0
 DOWN = 1
