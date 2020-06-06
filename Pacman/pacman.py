@@ -560,7 +560,7 @@ class Pacman:
 #          "wp    w",
 #          "wwwwwww"]
 
-# board = ["wwwwwww",
+# board = ["wwwwwww",   # - works
 #          "wp   *w",
 #          "wwwwwww"]
 
@@ -575,23 +575,34 @@ class Pacman:
 #          "w   * w",
 #          "wwwwwww"]
 # frozenLake 4x4
-# board = [
+# board = [             # - works
 #         "p   ",
 #         " w w",
 #         "   w",
 #         "w  *"
 #     ]
 # frozenLake 8x8
-board = [
-        "p       ",
-        "        ",
-        "   w    ",
-        "     w  ",
-        "   w    ",
-        " ww   w ",
-        " w  w w ",
-        "   w   *"
-    ]
+# board = [             # - works
+#         "p       ",
+#         "        ",
+#         "   w    ",
+#         "     w  ",
+#         "   w    ",
+#         " ww   w ",
+#         " w  w w ",
+#         "   w   *"
+#     ]
+# board = ["     ",       # - works 6m
+#          " www ",
+#          " w*  ",
+#          " www ",
+#          "p    "]
+board = ["*    ",       # - record mean reward 33.6, episode 32
+         " www ",
+         " w*  ",
+         " www ",
+         "p    "]
+
 
 clock = pygame.time.Clock()
 
@@ -700,12 +711,18 @@ for e in range(EPISODES):
 
 pacman.turn_on_display()
 
-# One hot
-# Sciany jak dziury we frozenLake
+
+'''
+- One hot
+- Ściany jak dziury we frozenLake - wpadasz, koniec gry poniewaz wczesniej moglismy kazac
+  agentowi wybrac z mozliwych akcji, teraz siec neuronowa musi się sama nauczyć nie wchodzić w ściany
+- testy najprostszego do trudniejszych środowisk
+'''
+#
+#
 # Od prostego do trudniejszego srodowiska
 
 # Wiecej warstw (konwolucyjne)
-# Zrobic z tego frozenLake - karac za wejscie w sciane
 
 # jak we frozen lake zachowuje sie wobec wejscia w sciane?
 # jak idzie w 8x8
