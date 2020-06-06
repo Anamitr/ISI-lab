@@ -171,32 +171,32 @@ class Pacman:
             if tuple(state.pacman_position) == wall:
                 # print("Run into wall")
                 result = True
-                
+
         if len(self.foods) == 0:
             result = True
 
         return result
 
-    def get_possible_actions(self, state):
-        """ return a tuple of possible actions in a given state """
-        possible_actions = []
-
-        width = len(self.board[0])
-        height = len(self.board)
-
-        if state.pacman_position[1] > 0:
-            if self.board[state.pacman_position[0]][state.pacman_position[1] - 1] != 'w':
-                possible_actions.append(LEFT)
-        if state.pacman_position[1] + 1 < width:
-            if self.board[state.pacman_position[0]][state.pacman_position[1] + 1] != 'w':
-                possible_actions.append(RIGHT)
-        if state.pacman_position[0] > 0:
-            if self.board[state.pacman_position[0] - 1][state.pacman_position[1]] != 'w':
-                possible_actions.append(UP)
-        if state.pacman_position[0] + 1 < height:
-            if self.board[state.pacman_position[0] + 1][state.pacman_position[1]] != 'w':
-                possible_actions.append(DOWN)
-        return possible_actions
+    # def get_possible_actions(self, state):
+    #     """ return a tuple of possible actions in a given state """
+    #     possible_actions = []
+    #
+    #     width = len(self.board[0])
+    #     height = len(self.board)
+    #
+    #     if state.pacman_position[1] > 0:
+    #         if self.board[state.pacman_position[0]][state.pacman_position[1] - 1] != 'w':
+    #             possible_actions.append(LEFT)
+    #     if state.pacman_position[1] + 1 < width:
+    #         if self.board[state.pacman_position[0]][state.pacman_position[1] + 1] != 'w':
+    #             possible_actions.append(RIGHT)
+    #     if state.pacman_position[0] > 0:
+    #         if self.board[state.pacman_position[0] - 1][state.pacman_position[1]] != 'w':
+    #             possible_actions.append(UP)
+    #     if state.pacman_position[0] + 1 < height:
+    #         if self.board[state.pacman_position[0] + 1][state.pacman_position[1]] != 'w':
+    #             possible_actions.append(DOWN)
+    #     return possible_actions
 
     def get_possible_actions_from_state_as_array(self, state_array):
         possible_actions = []
@@ -219,6 +219,9 @@ class Pacman:
             if self.board[state_array_copy[0] + 1][state_array_copy[1]] != 'w':
                 possible_actions.append(DOWN)
         return possible_actions
+
+    def get_possible_actions(self, state):
+        return [LEFT, DOWN, RIGHT, UP]
 
     def get_next_states(self, state: PacmanState, action):
         """
@@ -325,29 +328,29 @@ class Pacman:
 
         # move player according to action
 
-        # if action == LEFT and self.player_pos['x'] > 0:
-        #     if self.board[self.player_pos['y']][self.player_pos['x'] - 1] != 'w':
-        if action == LEFT:
+        if action == LEFT and self.player_pos['x'] > 0:
+            #     if self.board[self.player_pos['y']][self.player_pos['x'] - 1] != 'w':
+            # if action == LEFT:
             self.player_pos['x'] -= 1
-        # if action == RIGHT and self.player_pos['x'] + 1 < width:
-        #     if self.board[self.player_pos['y']][self.player_pos['x'] + 1] != 'w':
-        if action == RIGHT:
+        if action == RIGHT and self.player_pos['x'] + 1 < width:
+            #     if self.board[self.player_pos['y']][self.player_pos['x'] + 1] != 'w':
+            # if action == RIGHT:
             self.player_pos['x'] += 1
-        # if action == UP and self.player_pos['y'] > 0:
-        #     if self.board[self.player_pos['y'] - 1][self.player_pos['x']] != 'w':
-        if action == UP:
+        if action == UP and self.player_pos['y'] > 0:
+            #     if self.board[self.player_pos['y'] - 1][self.player_pos['x']] != 'w':
+            # if action == UP:
             self.player_pos['y'] -= 1
-        # if action == DOWN and self.player_pos['y'] + 1 < height:
-        #     if self.board[self.player_pos['y'] + 1][self.player_pos['x']] != 'w':
-        if action == DOWN:
+        if action == DOWN and self.player_pos['y'] + 1 < height:
+            #     if self.board[self.player_pos['y'] + 1][self.player_pos['x']] != 'w':
+            # if action == DOWN:
             self.player_pos['y'] += 1
 
-        for ghost in self.ghosts:
-            if ghost['x'] == self.player_pos['x'] and ghost['y'] == self.player_pos['y']:
-                self.score -= 500
-                reward = -500
-                self.__draw_board()
-                return self.__get_state(), reward, True, self.score
+        # for ghost in self.ghosts:
+        #     if ghost['x'] == self.player_pos['x'] and ghost['y'] == self.player_pos['y']:
+        #         self.score -= 500
+        #         reward = -500
+        #         self.__draw_board()
+        #         return self.__get_state(), reward, True, self.score
 
         # check if player eats food
 
@@ -359,67 +362,74 @@ class Pacman:
                 # food['x'] = -1
                 # food['y'] = -1
                 break
-        else:
-            self.score -= 1
-            reward = -1
+
+        # for wall in self.walls:
+        #     if wall[1] == self.player_pos['x'] and wall[0] == self.player_pos['y']:
+        #         self.score -= 10
+        #         reward = -10
+        #         self.__draw_board()
+        #         return self.__get_state(), reward, True, self.score
+        # else:
+        #     self.score -= 1
+        #     reward = -1
 
         # move ghosts
-        for ghost in self.ghosts:
-            moved = False
-            ghost_moves = [LEFT, RIGHT, UP, DOWN]
-            if ghost['x'] > 0 and self.board[ghost['y']][ghost['x'] - 1] != 'w':
-                if ghost['direction'] == LEFT:
-                    if RIGHT in ghost_moves:
-                        ghost_moves.remove(RIGHT)
-            else:
-                if LEFT in ghost_moves:
-                    ghost_moves.remove(LEFT)
+        # for ghost in self.ghosts:
+        #     moved = False
+        #     ghost_moves = [LEFT, RIGHT, UP, DOWN]
+        #     if ghost['x'] > 0 and self.board[ghost['y']][ghost['x'] - 1] != 'w':
+        #         if ghost['direction'] == LEFT:
+        #             if RIGHT in ghost_moves:
+        #                 ghost_moves.remove(RIGHT)
+        #     else:
+        #         if LEFT in ghost_moves:
+        #             ghost_moves.remove(LEFT)
+        #
+        #     if ghost['x'] + 1 < width and self.board[ghost['y']][ghost['x'] + 1] != 'w':
+        #         if ghost['direction'] == RIGHT:
+        #             if LEFT in ghost_moves:
+        #                 ghost_moves.remove(LEFT)
+        #     else:
+        #         if RIGHT in ghost_moves:
+        #             ghost_moves.remove(RIGHT)
+        #
+        #     if ghost['y'] > 0 and self.board[ghost['y'] - 1][ghost['x']] != 'w':
+        #         if ghost['direction'] == UP:
+        #             if DOWN in ghost_moves:
+        #                 ghost_moves.remove(DOWN)
+        #     else:
+        #         if UP in ghost_moves:
+        #             ghost_moves.remove(UP)
+        #
+        #     if ghost['y'] + 1 < height and self.board[ghost['y'] + 1][ghost['x']] != 'w':
+        #         if ghost['direction'] == DOWN:
+        #             if UP in ghost_moves:
+        #                 ghost_moves.remove(UP)
+        #     else:
+        #         if DOWN in ghost_moves:
+        #             ghost_moves.remove(DOWN)
+        #
+        #     ghost['direction'] = random.choice(ghost_moves)
+        #
+        #     if ghost['direction'] == LEFT and ghost['x'] > 0:
+        #         if self.board[ghost['y']][ghost['x'] - 1] != 'w':
+        #             ghost['x'] -= 1
+        #     if ghost['direction'] == RIGHT and ghost['x'] + 1 < width:
+        #         if self.board[ghost['y']][ghost['x'] + 1] != 'w':
+        #             ghost['x'] += 1
+        #     if ghost['direction'] == UP and ghost['y'] > 0:
+        #         if self.board[ghost['y'] - 1][ghost['x']] != 'w':
+        #             ghost['y'] -= 1
+        #     if ghost['direction'] == DOWN and ghost['y'] + 1 < height:
+        #         if self.board[ghost['y'] + 1][ghost['x']] != 'w':
+        #             ghost['y'] += 1
 
-            if ghost['x'] + 1 < width and self.board[ghost['y']][ghost['x'] + 1] != 'w':
-                if ghost['direction'] == RIGHT:
-                    if LEFT in ghost_moves:
-                        ghost_moves.remove(LEFT)
-            else:
-                if RIGHT in ghost_moves:
-                    ghost_moves.remove(RIGHT)
-
-            if ghost['y'] > 0 and self.board[ghost['y'] - 1][ghost['x']] != 'w':
-                if ghost['direction'] == UP:
-                    if DOWN in ghost_moves:
-                        ghost_moves.remove(DOWN)
-            else:
-                if UP in ghost_moves:
-                    ghost_moves.remove(UP)
-
-            if ghost['y'] + 1 < height and self.board[ghost['y'] + 1][ghost['x']] != 'w':
-                if ghost['direction'] == DOWN:
-                    if UP in ghost_moves:
-                        ghost_moves.remove(UP)
-            else:
-                if DOWN in ghost_moves:
-                    ghost_moves.remove(DOWN)
-
-            ghost['direction'] = random.choice(ghost_moves)
-
-            if ghost['direction'] == LEFT and ghost['x'] > 0:
-                if self.board[ghost['y']][ghost['x'] - 1] != 'w':
-                    ghost['x'] -= 1
-            if ghost['direction'] == RIGHT and ghost['x'] + 1 < width:
-                if self.board[ghost['y']][ghost['x'] + 1] != 'w':
-                    ghost['x'] += 1
-            if ghost['direction'] == UP and ghost['y'] > 0:
-                if self.board[ghost['y'] - 1][ghost['x']] != 'w':
-                    ghost['y'] -= 1
-            if ghost['direction'] == DOWN and ghost['y'] + 1 < height:
-                if self.board[ghost['y'] + 1][ghost['x']] != 'w':
-                    ghost['y'] += 1
-
-        for ghost in self.ghosts:
-            if ghost['x'] == self.player_pos['x'] and ghost['y'] == self.player_pos['y']:
-                self.score -= 500
-                reward = -500
-                self.__draw_board()
-                return self.__get_state(), reward, True, self.score
+        # for ghost in self.ghosts:
+        #     if ghost['x'] == self.player_pos['x'] and ghost['y'] == self.player_pos['y']:
+        #         self.score -= 500
+        #         reward = -500
+        #         self.__draw_board()
+        #         return self.__get_state(), reward, True, self.score
 
         self.__draw_board()
 
@@ -550,9 +560,38 @@ class Pacman:
 #          "wp    w",
 #          "wwwwwww"]
 
-board = ["wwwwwww",
-         "wp   *w",
-         "wwwwwww"]
+# board = ["wwwwwww",
+#          "wp   *w",
+#          "wwwwwww"]
+
+# board = ["wwwwwww",
+#          "wp    w",
+#          "wwwww*w",
+#          "wwwwwww"]
+
+# board = ["wwwwwww",
+#          "wp    w",
+#          "ww w  w",
+#          "w   * w",
+#          "wwwwwww"]
+# frozenLake 4x4
+# board = [
+#         "p   ",
+#         " w w",
+#         "   w",
+#         "w  *"
+#     ]
+# frozenLake 8x8
+board = [
+        "p       ",
+        "        ",
+        "   w    ",
+        "     w  ",
+        "   w    ",
+        " ww   w ",
+        " w  w w ",
+        "   w   *"
+    ]
 
 clock = pygame.time.Clock()
 
@@ -600,7 +639,7 @@ model.compile(loss="mean_squared_error",
               optimizer=Adam(lr=learning_rate))
 
 agent = DQNAgent(action_size, learning_rate, model, env=pacman,
-                 get_legal_actions=pacman.get_possible_actions_from_state_as_array)
+                 get_legal_actions=pacman.get_possible_actions)
 env = pacman
 pacman.turn_off_display()
 
@@ -667,3 +706,6 @@ pacman.turn_on_display()
 
 # Wiecej warstw (konwolucyjne)
 # Zrobic z tego frozenLake - karac za wejscie w sciane
+
+# jak we frozen lake zachowuje sie wobec wejscia w sciane?
+# jak idzie w 8x8
