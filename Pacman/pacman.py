@@ -1,5 +1,7 @@
 import copy
 import random
+import numpy as np
+import time as tm
 
 import pygame
 
@@ -10,6 +12,13 @@ from Pacman.linear_approximation import LinearApproximationAgent
 from Pacman.pacman_util import load_obj, save_obj
 from Pacman.pacman_value_iteration import value_iteration
 from Pacman.qlearning import QLearningAgent
+from deep_q_learning import DQNAgent
+
+from keras import Model
+from keras.layers import Dense
+from keras.models import Sequential
+from keras.optimizers import Adam
+from keras.utils import to_categorical
 
 LEFT = 0
 DOWN = 1
@@ -37,6 +46,7 @@ class Pacman:
         self.player_pos = dict()
         self.ghosts = []
         self.foods = []
+        self.walls = []
         self.score = 0
         self.movable_positions = self.get_movable_positions()
         for y in range(len(self.board)):
@@ -56,12 +66,14 @@ class Pacman:
                     food['x'] = x
                     food['y'] = y
                     self.foods.append(food)
+                elif self.board[y][x] == 'w':
+                    self.walls.append((y, x))
 
         self.init_foods = copy.deepcopy(self.foods)
         self.init_ghosts = copy.deepcopy(self.ghosts)
         self.__draw_board()
 
-    def reset(self):
+    def reset(self) -> PacmanState:
         """ resets state of the environment """
         self.foods = copy.deepcopy(self.init_foods)
         self.ghosts = copy.deepcopy(self.init_ghosts)
@@ -155,6 +167,14 @@ class Pacman:
         if is_last_food and state.pacman_position == state.food_positions[0]:
             result = True
 
+        for wall in self.walls:
+            if tuple(state.pacman_position) == wall:
+                # print("Run into wall")
+                result = True
+                
+        if len(self.foods) == 0:
+            result = True
+
         return result
 
     def get_possible_actions(self, state):
@@ -178,6 +198,28 @@ class Pacman:
                 possible_actions.append(DOWN)
         return possible_actions
 
+    def get_possible_actions_from_state_as_array(self, state_array):
+        possible_actions = []
+        state_array_copy = copy.deepcopy(state_array)
+        state_array_copy = state_array_copy.flatten()
+
+        width = len(self.board[0])
+        height = len(self.board)
+
+        if state_array_copy[1] > 0:
+            if self.board[state_array_copy[0]][state_array_copy[1] - 1] != 'w':
+                possible_actions.append(LEFT)
+        if state_array_copy[1] + 1 < width:
+            if self.board[state_array_copy[0]][state_array_copy[1] + 1] != 'w':
+                possible_actions.append(RIGHT)
+        if state_array_copy[0] > 0:
+            if self.board[state_array_copy[0] - 1][state_array_copy[1]] != 'w':
+                possible_actions.append(UP)
+        if state_array_copy[0] + 1 < height:
+            if self.board[state_array_copy[0] + 1][state_array_copy[1]] != 'w':
+                possible_actions.append(DOWN)
+        return possible_actions
+
     def get_next_states(self, state: PacmanState, action):
         """
         return a set of possible next states and probabilities of moving into them
@@ -191,17 +233,17 @@ class Pacman:
         height = len(self.board)
 
         if action == LEFT and state.pacman_position[1] > 0:
-            if self.board[state.pacman_position[0]][state.pacman_position[1] - 1] != 'w':
-                next_state_base.pacman_position[1] -= 1
+            # if self.board[state.pacman_position[0]][state.pacman_position[1] - 1] != 'w':
+            next_state_base.pacman_position[1] -= 1
         if action == RIGHT and state.pacman_position[1] + 1 < width:
-            if self.board[state.pacman_position[0]][state.pacman_position[1] + 1] != 'w':
-                next_state_base.pacman_position[1] += 1
+            # if self.board[state.pacman_position[0]][state.pacman_position[1] + 1] != 'w':
+            next_state_base.pacman_position[1] += 1
         if action == UP and state.pacman_position[0] > 0:
-            if self.board[state.pacman_position[0] - 1][state.pacman_position[1]] != 'w':
-                next_state_base.pacman_position[0] -= 1
+            # if self.board[state.pacman_position[0] - 1][state.pacman_position[1]] != 'w':
+            next_state_base.pacman_position[0] -= 1
         if action == DOWN and state.pacman_position[0] + 1 < height:
-            if self.board[state.pacman_position[0] + 1][state.pacman_position[1]] != 'w':
-                next_state_base.pacman_position[0] += 1
+            # if self.board[state.pacman_position[0] + 1][state.pacman_position[1]] != 'w':
+            next_state_base.pacman_position[0] += 1
 
         # Assume there is only one ghost
         ghost_position = next_state_base.ghosts_positions[0]
@@ -262,7 +304,7 @@ class Pacman:
         else:
             for food_position in state.food_positions:
                 if state.pacman_position == food_position:
-                    return 10
+                    return 50
 
         return -1
 
@@ -279,20 +321,26 @@ class Pacman:
         width = len(self.board[0])
         height = len(self.board)
 
+        reward = 0
+
         # move player according to action
 
-        if action == LEFT and self.player_pos['x'] > 0:
-            if self.board[self.player_pos['y']][self.player_pos['x'] - 1] != 'w':
-                self.player_pos['x'] -= 1
-        if action == RIGHT and self.player_pos['x'] + 1 < width:
-            if self.board[self.player_pos['y']][self.player_pos['x'] + 1] != 'w':
-                self.player_pos['x'] += 1
-        if action == UP and self.player_pos['y'] > 0:
-            if self.board[self.player_pos['y'] - 1][self.player_pos['x']] != 'w':
-                self.player_pos['y'] -= 1
-        if action == DOWN and self.player_pos['y'] + 1 < height:
-            if self.board[self.player_pos['y'] + 1][self.player_pos['x']] != 'w':
-                self.player_pos['y'] += 1
+        # if action == LEFT and self.player_pos['x'] > 0:
+        #     if self.board[self.player_pos['y']][self.player_pos['x'] - 1] != 'w':
+        if action == LEFT:
+            self.player_pos['x'] -= 1
+        # if action == RIGHT and self.player_pos['x'] + 1 < width:
+        #     if self.board[self.player_pos['y']][self.player_pos['x'] + 1] != 'w':
+        if action == RIGHT:
+            self.player_pos['x'] += 1
+        # if action == UP and self.player_pos['y'] > 0:
+        #     if self.board[self.player_pos['y'] - 1][self.player_pos['x']] != 'w':
+        if action == UP:
+            self.player_pos['y'] -= 1
+        # if action == DOWN and self.player_pos['y'] + 1 < height:
+        #     if self.board[self.player_pos['y'] + 1][self.player_pos['x']] != 'w':
+        if action == DOWN:
+            self.player_pos['y'] += 1
 
         for ghost in self.ghosts:
             if ghost['x'] == self.player_pos['x'] and ghost['y'] == self.player_pos['y']:
@@ -308,6 +356,8 @@ class Pacman:
                 self.score += 10
                 reward = 10
                 self.foods.remove(food)
+                # food['x'] = -1
+                # food['y'] = -1
                 break
         else:
             self.score -= 1
@@ -377,7 +427,9 @@ class Pacman:
             reward = 500
             self.score += 500
 
-        return self.__get_state(), reward, len(self.foods) == 0, self.score
+        state = self.__get_state()
+        # Nie zwraca się 500 za wszystkie zjedzone
+        return state, reward, self.is_terminal(state), self.score
 
     def __draw_board(self):
         '''
@@ -422,11 +474,20 @@ class Pacman:
         Function returns current state of the game
         :return: state
         '''
+        walls_positions = self.walls
         pacman_position = [self.player_pos['y'], self.player_pos['x']]
         ghosts_positions = [[ghost_pos['y'], ghost_pos['x']] for ghost_pos in self.ghosts]
         food_positions = [[food_pos['y'], food_pos['x']] for food_pos in self.foods]
+        # num_of_fields = len(board) * len(board[0])
+
+        movable_positions = []
+        for i in range(len(board)):
+            for j in range(len(board[0])):
+                movable_positions.append((i, j))
+
         state = PacmanState()
-        state.set_values(pacman_position, ghosts_positions, food_positions)
+        state.set_values(pacman_position, ghosts_positions, food_positions, walls_positions, movable_positions)
+
         return state
 
     def get_state(self):
@@ -463,18 +524,35 @@ class Pacman:
             graph[movable_pos] = possible_next_pos
         return graph
 
+    # def get_state_size(self):
+    #     pacman_state_size = 2
+    #     for ghost in self.ghosts:
+    #         pacman_state_size += 2
+    #     for food in self.foods:
+    #         pacman_state_size += 2
+    #     return pacman_state_size
 
-board = ["*   g",
-         " www ",
-         " w*  ",
-         " www ",
-         "p    "]
+    def get_state_size(self):
+        return len(board) * len(board[0]) * 3
 
-# board = ["    g",
+
+# board = ["*   g",
 #          " www ",
 #          " w*  ",
 #          " www ",
 #          "p    "]
+
+# board = ["wwwwwww",
+#          "w     w",
+#          "w www w",
+#          "w w*  w",
+#          "w www w",
+#          "wp    w",
+#          "wwwwwww"]
+
+board = ["wwwwwww",
+         "wp   *w",
+         "wwwwwww"]
 
 clock = pygame.time.Clock()
 
@@ -506,102 +584,86 @@ def play_and_train(env, agent):
 
 
 '''
-Apply Value Iteration algorithm for Pacman
+Deep Q-Learning
 '''
 
-# Calculate and save
-# optimal_policy, optimal_value = value_iteration(pacman, 0.9, 0.001)
-# print("Value iteration done")
-#
-# save_obj(optimal_policy, "results/optimal_policy")
-# save_obj(optimal_value, "results/optimal_value")
+state_size = pacman.get_state_size()
+action_size = 4
+learning_rate = 0.001
 
-# Load and play
-# optimal_policy = load_obj('results/optimal_policy')
+model = Sequential()
+model.add(Dense(16, input_dim=state_size, activation="relu"))
+model.add(Dense(32, activation="relu"))
+model.add(Dense(16, activation="relu"))
+model.add(Dense(action_size))  # wyjście
+model.compile(loss="mean_squared_error",
+              optimizer=Adam(lr=learning_rate))
 
-'''
-Apply Q-Learning algorithm for Pacman
-'''
+agent = DQNAgent(action_size, learning_rate, model, env=pacman,
+                 get_legal_actions=pacman.get_possible_actions_from_state_as_array)
+env = pacman
+pacman.turn_off_display()
 
-# def train_q_learing_agent(pacman):
-#     agent = QLearningAgent(alpha=0.1, epsilon=0.1, discount=0.99,
-#                            get_legal_actions=pacman.get_possible_actions)
-#
-#     pacman.turn_off_display()
-#     for i in range(10000):
-#         play_and_train(pacman, agent)
-#         print(i)
-#     pacman.turn_on_display()
-#     return agent
-#
-#
-# def test_and_display(pacman, agent):
-#     pacman.reset()
-#     state = pacman.get_state()
-#     done = False
-#
-#     while not done:
-#         for event in pygame.event.get():
-#             if event.type == pygame.QUIT:
-#                 done = True
-#
-#         '''
-#         move pacman according to the policy from Value Iteration
-#         '''
-#
-#         # to be done
-#         action = agent.get_action(state)
-#
-#         state, reward, done, score = pacman.step(action)
-#         # print(score)
-#         clock.tick(5)
-#
-#
-# agent = train_q_learing_agent(pacman)
-# for i in range(5):
-#     test_and_display(pacman, agent)
+# env_state = env.reset()
+# state = np.array([env_state.get_as_np_array()])
 
-'''
-Apply Linear Approximation algorithm for Pacman
-'''
+done = False
+batch_size = 64
+EPISODES = 2000
+counter = 0
+game_counter = 0
+for e in range(EPISODES):
+    start = tm.time()
+    summary = []
+    for _ in range(100):
+        total_reward = 0
+        env_state = env.reset()
 
+        #
+        # INSERT CODE HERE to prepare appropriate format of the state for network
+        #
+        # state = np.array([np.array(env_state).flatten()])
+        state = np.array([np.array(env_state.get_as_triple_one_hot()).flatten()])
 
-def train_q_learing_agent(pacman):
-    agent = LinearApproximationAgent(alpha=0.2, epsilon=0.05, discount=0.8,
-                                     get_legal_actions=pacman.get_possible_actions,
-                                     movable_positions_graph=pacman.get_field_moves_graph())
+        for time in range(1000):
+            action = agent.get_action(state)
+            next_state_env, reward, done, _ = env.step(action)
+            total_reward += reward
 
-    pacman.turn_off_display()
-    for i in range(1000):
-        play_and_train(pacman, agent)
-        print(i)
-    pacman.turn_on_display()
-    return agent
+            #
+            # INSERT CODE HERE to prepare appropriate format of the next state for network
+            #
+            next_state = np.array([np.array(next_state_env.get_as_triple_one_hot()).flatten()])
 
+            # add to experience memory
+            agent.remember(state, action, reward, next_state, done)
+            state = next_state
+            if done:
+                game_counter += 1
+                break
 
-def test_and_display(pacman, agent):
-    pacman.reset()
-    state = pacman.get_state()
-    done = False
+        #
+        # INSERT CODE HERE to train network if in the memory is more samples then size of the batch
+        #
+        if len(agent.memory) > batch_size:
+            agent.replay(64)
 
-    while not done:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                done = True
+        summary.append(total_reward)
 
-        '''
-        move pacman according to the policy from Value Iteration
-        '''
+    end = tm.time()
+    print("epoch #{}\tmean reward = {:.3f}\tepsilon = {:.3f}\ttime = {:.3f}\tgame num: {}".format(e, np.mean(summary),
+                                                                                                  agent.epsilon,
+                                                                                                  end - start,
+                                                                                                  game_counter))
+    if np.mean(total_reward) > 195:
+        print("You Win!")
+        break
 
-        # to be done
-        action = agent.get_action(state)
+pacman.turn_on_display()
 
-        state, reward, done, score = pacman.step(action)
-        if done:
-            print(score)
-        clock.tick(0)
+# One hot
+# Sciany jak dziury we frozenLake
+# Od prostego do trudniejszego srodowiska
 
-
-agent = train_q_learing_agent(pacman)
-for i in range(10):
-    test_and_display(pacman, agent)  # ~7/10 wins or better
+# Wiecej warstw (konwolucyjne)
+# Zrobic z tego frozenLake - karac za wejscie w sciane
