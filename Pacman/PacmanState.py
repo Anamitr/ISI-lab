@@ -45,7 +45,7 @@ class PacmanState:
         ghosts_positions_one_hot = [1 if x in [tuple(ghost) for ghost in self.ghosts_positions] else 0 for x in self.movable_positions]
         food_positions_one_hot = [1 if x in [tuple(food) for food in self.food_positions] else 0 for x in self.movable_positions]
         # return [pacman_pos_one_hot, ghosts_positions_one_hot, food_positions_one_hot]
-        return [walls_pos_one_hot, pacman_pos_one_hot, food_positions_one_hot]
+        return [walls_pos_one_hot, ghosts_positions_one_hot, pacman_pos_one_hot, food_positions_one_hot]
 
 
     def __hash__(self):

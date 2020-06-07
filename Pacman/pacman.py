@@ -331,19 +331,15 @@ class Pacman:
 
         if action == LEFT and self.player_pos['x'] > 0:
             if self.board[self.player_pos['y']][self.player_pos['x'] - 1] != 'w':
-                # if action == LEFT:
                 self.player_pos['x'] -= 1
         if action == RIGHT and self.player_pos['x'] + 1 < width:
             if self.board[self.player_pos['y']][self.player_pos['x'] + 1] != 'w':
-                # if action == RIGHT:
                 self.player_pos['x'] += 1
         if action == UP and self.player_pos['y'] > 0:
             if self.board[self.player_pos['y'] - 1][self.player_pos['x']] != 'w':
-                # if action == UP:
                 self.player_pos['y'] -= 1
         if action == DOWN and self.player_pos['y'] + 1 < height:
             if self.board[self.player_pos['y'] + 1][self.player_pos['x']] != 'w':
-                # if action == DOWN:
                 self.player_pos['y'] += 1
 
         for ghost in self.ghosts:
@@ -353,14 +349,6 @@ class Pacman:
                 reward = -500
                 self.__draw_board()
                 return self.__get_state(), reward, True, self.score
-
-        # for wall in self.walls:
-        #     if (self.player_pos['y'], self.player_pos['x']) == wall:
-        #         # print("Run into wall")
-        #         self.score -= 500
-        #         reward = -500
-        #         self.__draw_board()
-        #         return self.__get_state(), reward, True, self.score
 
         # check if player eats food
 
@@ -435,7 +423,7 @@ class Pacman:
         self.__draw_board()
 
         if len(self.foods) == 0:
-            print("Victory")
+            print("V", end='')
             reward = 500
             self.score += 500
 
@@ -545,7 +533,7 @@ class Pacman:
     #     return pacman_state_size
 
     def get_state_size(self):
-        return len(board) * len(board[0]) * 3
+        return len(board) * len(board[0]) * 4
 
 
 board = boards.board
@@ -556,23 +544,22 @@ pacman = Pacman(board)
 pacman.reset()
 
 
-def play_and_train(env, agent):
-    total_reward = 0.0
-    state = env.reset()
+def play_and_display(env, agent):
+    env.turn_on_display()
+    total_reward = 0
+    env_state = env.reset()
 
-    done = False
-    action = agent.get_action(state)
+    state = np.array([np.array(env_state.get_as_triple_one_hot()).flatten()])
 
-    while not done:
-        # get agent to pick action given state state.
+    for time in range(1000):
+        action = agent.get_action(state)
+        next_state_env, reward, done, _ = env.step(action)
+        clock.tick(5)
+        total_reward += reward
 
-        next_state, reward, done, _ = env.step(action)
-
-        # train (update) agent for state
-        action = agent.update(state, action, reward, next_state)
+        next_state = np.array([np.array(next_state_env.get_as_triple_one_hot()).flatten()])
 
         state = next_state
-        total_reward += reward
         if done:
             break
 
@@ -588,77 +575,89 @@ action_size = 4
 learning_rate = 0.001
 
 model = Sequential()
-model.add(Dense(32, input_dim=state_size, activation="relu"))
-model.add(Dense(64, activation="relu"))
-model.add(Dense(32, activation="relu"))
+model.add(Dense(128, input_dim=state_size, activation="relu"))
+model.add(Dense(256, activation="relu"))
+model.add(Dense(128, activation="relu"))
 model.add(Dense(action_size))  # wyjście
 model.compile(loss="mean_squared_error",
               optimizer=Adam(lr=learning_rate))
 
-agent = DQNAgent(action_size, learning_rate, model, env=pacman,
-                 get_legal_actions=pacman.get_possible_actions)
 env = pacman
-pacman.turn_off_display()
-
-# env_state = env.reset()
-# state = np.array([env_state.get_as_np_array()])
 
 print(board)
 
-done = False
-batch_size = 64
-EPISODES = 1000
-counter = 0
-game_counter = 0
-for e in range(EPISODES):
-    start = tm.time()
-    summary = []
-    for _ in range(100):
-        total_reward = 0
-        env_state = env.reset()
+DISPLAY_MODE = False
 
-        #
-        # INSERT CODE HERE to prepare appropriate format of the state for network
-        #
-        # state = np.array([np.array(env_state).flatten()])
-        state = np.array([np.array(env_state.get_as_triple_one_hot()).flatten()])
+if DISPLAY_MODE:
+    agent = DQNAgent(action_size, learning_rate, model, env=pacman,
+                     get_legal_actions=pacman.get_possible_actions, epsilon_start=0.02)
+    pacman.turn_on_display()
+    results_path = 'results/'
+    weights_file = results_path + 'board12_weights'
+    model.load_weights(weights_file)
+    for i in range(10):
+        play_and_display(pacman, agent)
+else:
+    pacman.turn_off_display()
+    agent = DQNAgent(action_size, learning_rate, model, env=pacman,
+                     get_legal_actions=pacman.get_possible_actions)
 
-        for time in range(1000):
-            action = agent.get_action(state)
-            next_state_env, reward, done, _ = env.step(action)
-            total_reward += reward
+    done = False
+    batch_size = 64
+    EPISODES = 50
+    counter = 0
+    game_counter = 0
+    MAX_MOVES_PER_GAME = 1000
+    mean_rewards = []
+    for e in range(EPISODES):
+        start = tm.time()
+        summary = []
+        for _ in range(100):
+            total_reward = 0
+            env_state = env.reset()
 
             #
-            # INSERT CODE HERE to prepare appropriate format of the next state for network
+            # INSERT CODE HERE to prepare appropriate format of the state for network
             #
-            next_state = np.array([np.array(next_state_env.get_as_triple_one_hot()).flatten()])
+            state = np.array([np.array(env_state.get_as_triple_one_hot()).flatten()])
 
-            # add to experience memory
-            agent.remember(state, action, reward, next_state, done)
-            state = next_state
-            if done:
-                game_counter += 1
-                break
+            for time in range(MAX_MOVES_PER_GAME):
+                action = agent.get_action(state)
+                next_state_env, reward, done, _ = env.step(action)
+                total_reward += reward
 
-        #
-        # INSERT CODE HERE to train network if in the memory is more samples then size of the batch
-        #
-        if len(agent.memory) > batch_size:
-            agent.replay(64)
+                #
+                # INSERT CODE HERE to prepare appropriate format of the next state for network
+                #
+                next_state = np.array([np.array(next_state_env.get_as_triple_one_hot()).flatten()])
 
-        summary.append(total_reward)
+                # add to experience memory
+                agent.remember(state, action, reward, next_state, done)
+                state = next_state
+                if done:
+                    game_counter += 1
+                    break
 
-    end = tm.time()
-    print("Achieved rewards:", summary)
-    print("epoch #{}\tmean reward = {:.3f}\tepsilon = {:.3f}\ttime = {:.3f}\tgame num: {}".format(e, np.mean(summary),
-                                                                                                  agent.epsilon,
-                                                                                                  end - start,
-                                                                                                  game_counter))
-    if np.mean(summary) > 195:
-        print("You Win!")
-        break
+            #
+            # INSERT CODE HERE to train network if in the memory is more samples then size of the batch
+            #
+            if len(agent.memory) > batch_size:
+                agent.replay(64)
 
-pacman.turn_on_display()
+            summary.append(total_reward)
+
+        end = tm.time()
+        mean_reward = np.mean(summary)
+        mean_rewards.append(mean_reward)
+        print("\nAchieved rewards:", summary)
+        print("epoch #{}\tmean reward = {:.3f}\tepsilon = {:.3f}\ttime = {:.3f}\tgame num: {}\tbest mean reward = {:.3f}".format(e, mean_reward,
+                                                                                                      agent.epsilon,
+                                                                                                      end - start,
+                                                                                                      game_counter,
+                                                                                                      max(mean_rewards)))
+        if np.mean(summary) > 300:
+            print("You Win!")
+            break
 
 '''
 - One hot

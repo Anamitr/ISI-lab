@@ -54,7 +54,7 @@ board8 = ["*    ",       # - record mean reward 33.6, episode 32
          " w*  ",
          " www ",
          "p    "]
-board9 = ["    g",
+board9 = ["*    ",
          " www ",
          " w*  ",
          " www ",
@@ -65,6 +65,9 @@ board10 = ["wwwwwww",   # - works
 board11 = ["g p  ",     # - works
            "wwww ",
            "ww*  "]
+board12 = ["    *",     # max mean reward = 489, works good
+           " www ",
+           "p   g"]
 
 
-board = board11
+board = board12
