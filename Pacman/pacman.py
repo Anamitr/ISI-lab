@@ -5,6 +5,7 @@ import time as tm
 
 import pygame
 
+from Pacman import boards
 from Pacman.PacmanState import PacmanState
 from Pacman.anagram_cal import permutations_with_partial_repetitions
 from Pacman.finding_path_util import find_shortest_path
@@ -329,24 +330,33 @@ class Pacman:
         # move player according to action
 
         if action == LEFT and self.player_pos['x'] > 0:
-            #     if self.board[self.player_pos['y']][self.player_pos['x'] - 1] != 'w':
-            # if action == LEFT:
-            self.player_pos['x'] -= 1
+            if self.board[self.player_pos['y']][self.player_pos['x'] - 1] != 'w':
+                # if action == LEFT:
+                self.player_pos['x'] -= 1
         if action == RIGHT and self.player_pos['x'] + 1 < width:
-            #     if self.board[self.player_pos['y']][self.player_pos['x'] + 1] != 'w':
-            # if action == RIGHT:
-            self.player_pos['x'] += 1
+            if self.board[self.player_pos['y']][self.player_pos['x'] + 1] != 'w':
+                # if action == RIGHT:
+                self.player_pos['x'] += 1
         if action == UP and self.player_pos['y'] > 0:
-            #     if self.board[self.player_pos['y'] - 1][self.player_pos['x']] != 'w':
-            # if action == UP:
-            self.player_pos['y'] -= 1
+            if self.board[self.player_pos['y'] - 1][self.player_pos['x']] != 'w':
+                # if action == UP:
+                self.player_pos['y'] -= 1
         if action == DOWN and self.player_pos['y'] + 1 < height:
-            #     if self.board[self.player_pos['y'] + 1][self.player_pos['x']] != 'w':
-            # if action == DOWN:
-            self.player_pos['y'] += 1
+            if self.board[self.player_pos['y'] + 1][self.player_pos['x']] != 'w':
+                # if action == DOWN:
+                self.player_pos['y'] += 1
 
-        # for ghost in self.ghosts:
-        #     if ghost['x'] == self.player_pos['x'] and ghost['y'] == self.player_pos['y']:
+        for ghost in self.ghosts:
+            if ghost['x'] == self.player_pos['x'] and ghost['y'] == self.player_pos['y']:
+                # print("Run into ghost")
+                self.score -= 500
+                reward = -500
+                self.__draw_board()
+                return self.__get_state(), reward, True, self.score
+
+        # for wall in self.walls:
+        #     if (self.player_pos['y'], self.player_pos['x']) == wall:
+        #         # print("Run into wall")
         #         self.score -= 500
         #         reward = -500
         #         self.__draw_board()
@@ -359,81 +369,73 @@ class Pacman:
                 self.score += 10
                 reward = 10
                 self.foods.remove(food)
-                # food['x'] = -1
-                # food['y'] = -1
                 break
-
-        # for wall in self.walls:
-        #     if wall[1] == self.player_pos['x'] and wall[0] == self.player_pos['y']:
-        #         self.score -= 10
-        #         reward = -10
-        #         self.__draw_board()
-        #         return self.__get_state(), reward, True, self.score
-        # else:
-        #     self.score -= 1
-        #     reward = -1
+        else:
+            self.score -= 1
+            reward = -1
 
         # move ghosts
-        # for ghost in self.ghosts:
-        #     moved = False
-        #     ghost_moves = [LEFT, RIGHT, UP, DOWN]
-        #     if ghost['x'] > 0 and self.board[ghost['y']][ghost['x'] - 1] != 'w':
-        #         if ghost['direction'] == LEFT:
-        #             if RIGHT in ghost_moves:
-        #                 ghost_moves.remove(RIGHT)
-        #     else:
-        #         if LEFT in ghost_moves:
-        #             ghost_moves.remove(LEFT)
-        #
-        #     if ghost['x'] + 1 < width and self.board[ghost['y']][ghost['x'] + 1] != 'w':
-        #         if ghost['direction'] == RIGHT:
-        #             if LEFT in ghost_moves:
-        #                 ghost_moves.remove(LEFT)
-        #     else:
-        #         if RIGHT in ghost_moves:
-        #             ghost_moves.remove(RIGHT)
-        #
-        #     if ghost['y'] > 0 and self.board[ghost['y'] - 1][ghost['x']] != 'w':
-        #         if ghost['direction'] == UP:
-        #             if DOWN in ghost_moves:
-        #                 ghost_moves.remove(DOWN)
-        #     else:
-        #         if UP in ghost_moves:
-        #             ghost_moves.remove(UP)
-        #
-        #     if ghost['y'] + 1 < height and self.board[ghost['y'] + 1][ghost['x']] != 'w':
-        #         if ghost['direction'] == DOWN:
-        #             if UP in ghost_moves:
-        #                 ghost_moves.remove(UP)
-        #     else:
-        #         if DOWN in ghost_moves:
-        #             ghost_moves.remove(DOWN)
-        #
-        #     ghost['direction'] = random.choice(ghost_moves)
-        #
-        #     if ghost['direction'] == LEFT and ghost['x'] > 0:
-        #         if self.board[ghost['y']][ghost['x'] - 1] != 'w':
-        #             ghost['x'] -= 1
-        #     if ghost['direction'] == RIGHT and ghost['x'] + 1 < width:
-        #         if self.board[ghost['y']][ghost['x'] + 1] != 'w':
-        #             ghost['x'] += 1
-        #     if ghost['direction'] == UP and ghost['y'] > 0:
-        #         if self.board[ghost['y'] - 1][ghost['x']] != 'w':
-        #             ghost['y'] -= 1
-        #     if ghost['direction'] == DOWN and ghost['y'] + 1 < height:
-        #         if self.board[ghost['y'] + 1][ghost['x']] != 'w':
-        #             ghost['y'] += 1
+        for ghost in self.ghosts:
+            moved = False
+            ghost_moves = [LEFT, RIGHT, UP, DOWN]
+            if ghost['x'] > 0 and self.board[ghost['y']][ghost['x'] - 1] != 'w':
+                if ghost['direction'] == LEFT:
+                    if RIGHT in ghost_moves:
+                        ghost_moves.remove(RIGHT)
+            else:
+                if LEFT in ghost_moves:
+                    ghost_moves.remove(LEFT)
 
-        # for ghost in self.ghosts:
-        #     if ghost['x'] == self.player_pos['x'] and ghost['y'] == self.player_pos['y']:
-        #         self.score -= 500
-        #         reward = -500
-        #         self.__draw_board()
-        #         return self.__get_state(), reward, True, self.score
+            if ghost['x'] + 1 < width and self.board[ghost['y']][ghost['x'] + 1] != 'w':
+                if ghost['direction'] == RIGHT:
+                    if LEFT in ghost_moves:
+                        ghost_moves.remove(LEFT)
+            else:
+                if RIGHT in ghost_moves:
+                    ghost_moves.remove(RIGHT)
+
+            if ghost['y'] > 0 and self.board[ghost['y'] - 1][ghost['x']] != 'w':
+                if ghost['direction'] == UP:
+                    if DOWN in ghost_moves:
+                        ghost_moves.remove(DOWN)
+            else:
+                if UP in ghost_moves:
+                    ghost_moves.remove(UP)
+
+            if ghost['y'] + 1 < height and self.board[ghost['y'] + 1][ghost['x']] != 'w':
+                if ghost['direction'] == DOWN:
+                    if UP in ghost_moves:
+                        ghost_moves.remove(UP)
+            else:
+                if DOWN in ghost_moves:
+                    ghost_moves.remove(DOWN)
+
+            ghost['direction'] = random.choice(ghost_moves)
+
+            if ghost['direction'] == LEFT and ghost['x'] > 0:
+                if self.board[ghost['y']][ghost['x'] - 1] != 'w':
+                    ghost['x'] -= 1
+            if ghost['direction'] == RIGHT and ghost['x'] + 1 < width:
+                if self.board[ghost['y']][ghost['x'] + 1] != 'w':
+                    ghost['x'] += 1
+            if ghost['direction'] == UP and ghost['y'] > 0:
+                if self.board[ghost['y'] - 1][ghost['x']] != 'w':
+                    ghost['y'] -= 1
+            if ghost['direction'] == DOWN and ghost['y'] + 1 < height:
+                if self.board[ghost['y'] + 1][ghost['x']] != 'w':
+                    ghost['y'] += 1
+
+        for ghost in self.ghosts:
+            if ghost['x'] == self.player_pos['x'] and ghost['y'] == self.player_pos['y']:
+                self.score -= 500
+                reward = -500
+                self.__draw_board()
+                return self.__get_state(), reward, True, self.score
 
         self.__draw_board()
 
         if len(self.foods) == 0:
+            print("Victory")
             reward = 500
             self.score += 500
 
@@ -546,63 +548,7 @@ class Pacman:
         return len(board) * len(board[0]) * 3
 
 
-# board = ["*   g",
-#          " www ",
-#          " w*  ",
-#          " www ",
-#          "p    "]
-
-# board = ["wwwwwww",
-#          "w     w",
-#          "w www w",
-#          "w w*  w",
-#          "w www w",
-#          "wp    w",
-#          "wwwwwww"]
-
-# board = ["wwwwwww",   # - works
-#          "wp   *w",
-#          "wwwwwww"]
-
-# board = ["wwwwwww",
-#          "wp    w",
-#          "wwwww*w",
-#          "wwwwwww"]
-
-# board = ["wwwwwww",
-#          "wp    w",
-#          "ww w  w",
-#          "w   * w",
-#          "wwwwwww"]
-# frozenLake 4x4
-# board = [             # - works
-#         "p   ",
-#         " w w",
-#         "   w",
-#         "w  *"
-#     ]
-# frozenLake 8x8
-# board = [             # - works
-#         "p       ",
-#         "        ",
-#         "   w    ",
-#         "     w  ",
-#         "   w    ",
-#         " ww   w ",
-#         " w  w w ",
-#         "   w   *"
-#     ]
-# board = ["     ",       # - works 6m
-#          " www ",
-#          " w*  ",
-#          " www ",
-#          "p    "]
-board = ["*    ",       # - record mean reward 33.6, episode 32
-         " www ",
-         " w*  ",
-         " www ",
-         "p    "]
-
+board = boards.board
 
 clock = pygame.time.Clock()
 
@@ -642,9 +588,9 @@ action_size = 4
 learning_rate = 0.001
 
 model = Sequential()
-model.add(Dense(16, input_dim=state_size, activation="relu"))
+model.add(Dense(32, input_dim=state_size, activation="relu"))
+model.add(Dense(64, activation="relu"))
 model.add(Dense(32, activation="relu"))
-model.add(Dense(16, activation="relu"))
 model.add(Dense(action_size))  # wyjście
 model.compile(loss="mean_squared_error",
               optimizer=Adam(lr=learning_rate))
@@ -657,9 +603,11 @@ pacman.turn_off_display()
 # env_state = env.reset()
 # state = np.array([env_state.get_as_np_array()])
 
+print(board)
+
 done = False
 batch_size = 64
-EPISODES = 2000
+EPISODES = 1000
 counter = 0
 game_counter = 0
 for e in range(EPISODES):
@@ -701,16 +649,16 @@ for e in range(EPISODES):
         summary.append(total_reward)
 
     end = tm.time()
+    print("Achieved rewards:", summary)
     print("epoch #{}\tmean reward = {:.3f}\tepsilon = {:.3f}\ttime = {:.3f}\tgame num: {}".format(e, np.mean(summary),
                                                                                                   agent.epsilon,
                                                                                                   end - start,
                                                                                                   game_counter))
-    if np.mean(total_reward) > 195:
+    if np.mean(summary) > 195:
         print("You Win!")
         break
 
 pacman.turn_on_display()
-
 
 '''
 - One hot
@@ -718,11 +666,15 @@ pacman.turn_on_display()
   agentowi wybrac z mozliwych akcji, teraz siec neuronowa musi się sama nauczyć nie wchodzić w ściany
 - testy najprostszego do trudniejszych środowisk
 '''
-#
-#
-# Od prostego do trudniejszego srodowiska
 
 # Wiecej warstw (konwolucyjne)
+# otoczyc scianami?
 
+# przedebugowac jak teraz dziala z duchem
 # jak we frozen lake zachowuje sie wobec wejscia w sciane?
 # jak idzie w 8x8
+
+# Czy karac za wejscie w sciane?
+# Jak za wejscie w sciane nagroda 0 to uczy sie wchodzenia w sciane zeby go duszek nie zjadl
+# MZ - wejscie w sciane to brak zmiany stanu i duch go dalej przepycha
+# Moze mala nagroda za chodzenie zeby zachecic go do eksploracji?
