@@ -62,7 +62,7 @@ board_dict = {
            " www ",
            "p    "],
     "14": ["*   g", # max mean reward = 341, Total victory ratio: 788 / 1000, 300 epochs, ~1h
-           " www ",
+           " www ", # 909, 906, 912
            " w*  ",
            " www ",
            "p    "]

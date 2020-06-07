@@ -568,15 +568,12 @@ def play(env, agent):
 def test(env, agent, num_of_plays=10):
     env.turn_off_display()
 
-    env_state = env.reset()
-
-    state = np.array([np.array(env_state.get_as_triple_one_hot()).flatten()])
-
     total_rewards = []
     for i in range(num_of_plays):
         total_rewards.append(play(env, agent))
     num_of_victories = len([r for r in total_rewards if r > 0])
     print("\nTotal victory ratio:", num_of_victories, "/", num_of_plays)
+    return total_rewards
 
 
 def play_and_display(env, agent):
@@ -679,7 +676,7 @@ env = pacman
 
 print(board)
 
-DISPLAY_MODE = False
+DISPLAY_MODE = True
 results_path = 'results/'
 
 if DISPLAY_MODE:
@@ -687,10 +684,10 @@ if DISPLAY_MODE:
                      get_legal_actions=pacman.get_possible_actions, epsilon_start=0.02)
     pacman.turn_on_display()
 
-    weights_file = results_path + 'board14_1'
+    weights_file = results_path + 'board14_2'
     model.load_weights(weights_file)
-    for i in range(10):
-        play_and_display(pacman, agent)
+    # for i in range(10):
+    #     play_and_display(pacman, agent)
 else:
     pacman.turn_off_display()
     agent = DQNAgent(action_size, learning_rate, model, env=pacman,
@@ -699,10 +696,18 @@ else:
     train(env, agent)
 
 '''
-- One hot
+- One hot [sciany, duszki, pacman, jedzenie]
+- po kolei od prostszych do trundniejszych planszy
+- podejscie do scian, ostatecznie wejscie w sciane to -1 nagrody i stoi w miejscu
+- ilosc parametrow, mala duza
+
+Dla ostatecznej mapy po pierwszym 15 min przetrenowaniu ~70% wygranych - wchodzil do tunelu i nie potrafil z niego wyjsc
+Po podkreconym epsilon_decay i 300 epokach nauczyl sie najpierw zbierac jedzenie z brzegu, potem w tunelu
+
 - Ściany jak dziury we frozenLake - wpadasz, koniec gry poniewaz wczesniej moglismy kazac
   agentowi wybrac z mozliwych akcji, teraz siec neuronowa musi się sama nauczyć nie wchodzić w ściany
 - testy najprostszego do trudniejszych środowisk
+- 
 '''
 
 # Wiecej warstw (konwolucyjne)
@@ -714,5 +719,4 @@ else:
 
 # Czy karac za wejscie w sciane?
 # Jak za wejscie w sciane nagroda 0 to uczy sie wchodzenia w sciane zeby go duszek nie zjadl
-# MZ - wejscie w sciane to brak zmiany stanu i duch go dalej przepycha
 # Moze mala nagroda za chodzenie zeby zachecic go do eksploracji?
