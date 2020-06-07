@@ -544,6 +544,41 @@ pacman = Pacman(board)
 pacman.reset()
 
 
+def play(env, agent):
+    env.turn_off_display()
+    total_reward = 0
+    env_state = env.reset()
+
+    state = np.array([np.array(env_state.get_as_triple_one_hot()).flatten()])
+
+    for time in range(1000):
+        action = agent.get_action(state)
+        next_state_env, reward, done, _ = env.step(action)
+        total_reward += reward
+
+        next_state = np.array([np.array(next_state_env.get_as_triple_one_hot()).flatten()])
+
+        state = next_state
+        if done:
+            break
+
+    return total_reward
+
+
+def test(env, agent, num_of_plays=10):
+    env.turn_off_display()
+
+    env_state = env.reset()
+
+    state = np.array([np.array(env_state.get_as_triple_one_hot()).flatten()])
+
+    total_rewards = []
+    for i in range(num_of_plays):
+        total_rewards.append(play(env, agent))
+    num_of_victories = len([r for r in total_rewards if r > 0])
+    print("\nTotal victory ratio:", num_of_victories, "/", num_of_plays)
+
+
 def play_and_display(env, agent):
     env.turn_on_display()
     total_reward = 0
@@ -566,45 +601,10 @@ def play_and_display(env, agent):
     return total_reward
 
 
-'''
-Deep Q-Learning
-'''
-
-state_size = pacman.get_state_size()
-action_size = 4
-learning_rate = 0.001
-
-model = Sequential()
-model.add(Dense(128, input_dim=state_size, activation="relu"))
-model.add(Dense(256, activation="relu"))
-model.add(Dense(128, activation="relu"))
-model.add(Dense(action_size))  # wyjście
-model.compile(loss="mean_squared_error",
-              optimizer=Adam(lr=learning_rate))
-
-env = pacman
-
-print(board)
-
-DISPLAY_MODE = False
-
-if DISPLAY_MODE:
-    agent = DQNAgent(action_size, learning_rate, model, env=pacman,
-                     get_legal_actions=pacman.get_possible_actions, epsilon_start=0.02)
-    pacman.turn_on_display()
-    results_path = 'results/'
-    weights_file = results_path + 'board12_weights'
-    model.load_weights(weights_file)
-    for i in range(10):
-        play_and_display(pacman, agent)
-else:
-    pacman.turn_off_display()
-    agent = DQNAgent(action_size, learning_rate, model, env=pacman,
-                     get_legal_actions=pacman.get_possible_actions)
-
+def train(env, agent, episodes=50):
     done = False
     batch_size = 64
-    EPISODES = 50
+    EPISODES = episodes
     counter = 0
     game_counter = 0
     MAX_MOVES_PER_GAME = 1000
@@ -650,14 +650,53 @@ else:
         mean_reward = np.mean(summary)
         mean_rewards.append(mean_reward)
         print("\nAchieved rewards:", summary)
-        print("epoch #{}\tmean reward = {:.3f}\tepsilon = {:.3f}\ttime = {:.3f}\tgame num: {}\tbest mean reward = {:.3f}".format(e, mean_reward,
-                                                                                                      agent.epsilon,
-                                                                                                      end - start,
-                                                                                                      game_counter,
-                                                                                                      max(mean_rewards)))
-        if np.mean(summary) > 300:
-            print("You Win!")
-            break
+        print(
+            "epoch #{}\tmean reward = {:.3f}\tepsilon = {:.3f}\ttime = {:.3f}\tgame num: {}\tbest mean reward = {:.3f}".format(
+                e, mean_reward,
+                agent.epsilon,
+                end - start,
+                game_counter,
+                max(mean_rewards)))
+
+
+'''
+Deep Q-Learning
+'''
+
+state_size = pacman.get_state_size()
+action_size = 4
+learning_rate = 0.001
+
+model = Sequential()
+model.add(Dense(128, input_dim=state_size, activation="relu"))
+model.add(Dense(256, activation="relu"))
+model.add(Dense(128, activation="relu"))
+model.add(Dense(action_size))  # wyjście
+model.compile(loss="mean_squared_error",
+              optimizer=Adam(lr=learning_rate))
+
+env = pacman
+
+print(board)
+
+DISPLAY_MODE = False
+results_path = 'results/'
+
+if DISPLAY_MODE:
+    agent = DQNAgent(action_size, learning_rate, model, env=pacman,
+                     get_legal_actions=pacman.get_possible_actions, epsilon_start=0.02)
+    pacman.turn_on_display()
+
+    weights_file = results_path + 'board14_1'
+    model.load_weights(weights_file)
+    for i in range(10):
+        play_and_display(pacman, agent)
+else:
+    pacman.turn_off_display()
+    agent = DQNAgent(action_size, learning_rate, model, env=pacman,
+                     get_legal_actions=pacman.get_possible_actions)
+    agent.set_new_epsilon_decay(0.9999)
+    train(env, agent)
 
 '''
 - One hot
