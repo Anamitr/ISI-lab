@@ -10,6 +10,7 @@ from keras.models import Sequential
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 import keras.backend as K
+import keras.utils as K_utils
 
 
 def get_cumulative_rewards(rewards,  # rewards at each step
@@ -39,6 +40,7 @@ def get_cumulative_rewards(rewards,  # rewards at each step
 
     return cumulative_rewards
 
+
 assert len(get_cumulative_rewards(range(100))) == 100
 assert np.allclose(get_cumulative_rewards([0, 0, 1, 0, 0, 1, 0], gamma=0.9),
                    [1.40049, 1.5561, 1.729, 0.81, 0.9, 1.0, 0.0])
@@ -47,14 +49,17 @@ assert np.allclose(get_cumulative_rewards([0, 0, 1, -2, 3, -4, 0], gamma=0.5),
 assert np.allclose(get_cumulative_rewards([0, 0, 1, 2, 3, 4, 0], gamma=0), [0, 0, 1, 2, 3, 4, 0])
 
 
-class Agent(object):
-    def __init__(self, action_size, policy, predict):
-        self.G = 0
-        self.gamma = 0.99
+class REINFORCEAgent:
+    def __init__(self, state_size, action_size, policy_model, predict_model):
+        self.state_size = state_size
         self.action_size = action_size
-        self.policy = policy
-        self.predict = predict
+        self.gamma = 0.99  # discount rate
+        self.learning_rate = 0.001
+
+        self.policy = policy_model
+        self.predict = predict_model
         self.action_space = [i for i in range(action_size)]
+
         self.state_memory = []
         self.action_memory = []
         self.reward_memory = []
@@ -71,21 +76,25 @@ class Agent(object):
         self.action_memory.append(action)
         self.reward_memory.append(reward)
 
-    def learn(self):
-        state_memory = np.array(self.state_memory)
-        action_memory = np.array(self.action_memory)
-        reward_memory = np.array(self.reward_memory)
-
-        actions = np.zeros([len(action_memory), self.action_size])
-        actions[np.arange(len(action_memory)), action_memory] = 1
-
-        self.G = np.array(get_cumulative_rewards(reward_memory, self.gamma))
-
-        cost = self.policy.train_on_batch([state_memory, self.G], actions)
-
+    def clear_memory(self):
         self.state_memory = []
         self.action_memory = []
         self.reward_memory = []
+
+    def learn(self):
+        state_memory_np_array = np.array(self.state_memory)
+        action_memory_np_array = np.array(self.action_memory)
+        reward_memory_np_array = np.array(self.reward_memory)
+
+        actions = np.zeros([len(action_memory_np_array), self.action_size])
+        for i in range(len(action_memory_np_array)):
+            actions[i][action_memory_np_array[i]] = 1
+
+        cumulative_rewards = np.array(get_cumulative_rewards(reward_memory_np_array, self.gamma))
+
+        cost = self.policy.train_on_batch([state_memory_np_array, cumulative_rewards], actions)
+
+        self.clear_memory()
 
         return cost
 
@@ -95,25 +104,35 @@ state_size = env.observation_space.shape[0]
 action_size = env.action_space.n
 learning_rate = 0.001
 
-input = Input(shape=(state_size,))
-advantages = Input(shape=[1])
-dense1 = Dense(64, activation='relu')(input)
-dense2 = Dense(64, activation='relu')(dense1)
-probs = Dense(action_size, activation='softmax')(dense2)
 
-def custom_loss(y_true, y_pred):
-    out = K.clip(y_pred, 1e-8, 1 - 1e-8)
-    log_lik = y_true * K.log(out)
+def build_model():
+    states_input = Input(shape=(state_size,))
+    cumulative_reward_input = Input(shape=[1])
+    dense1 = (Dense(32, activation="relu"))(states_input)
+    dense2 = (Dense(64, activation="relu"))(dense1)
+    dense3 = (Dense(32, activation="relu"))(dense2)
+    probs = Dense(action_size, activation='softmax')(dense3)
 
-    return K.sum(-log_lik * advantages)
+    def custom_loss(y_true, y_pred):
+        # y_pred_mean = K.mean(y_pred)
+        # y_pred_std = K.std(y_pred)
+        # y_pred_normalized = (y_pred - y_pred_mean) / y_pred_std
+        # y_pred_normalized = K.clip(y_pred, 0, 1)
+        # return -(learning_rate * cumulative_reward_input * y_true * y_pred_normalized)
+        # return -(cumulative_reward_input * y_true * K.log(y_pred_normalized))
+        # y_true * K.log(y_pred_normalized) - mnożymy akcję którą wybraliśmy przez oszacowanie tej akcji
+        # Gradient Policy(s,a)
+        return -(cumulative_reward_input * y_true * K.log(K.clip(y_pred, 0, 1)))
 
-policy = Model(input=[input, advantages], output=[probs])
+    policy_model = Model(input=[states_input, cumulative_reward_input], output=[probs])
+    policy_model.compile(optimizer=Adam(lr=learning_rate), loss=custom_loss)
+    predict_model = Model(input=[states_input], output=[probs])
+    return policy_model, predict_model
 
-policy.compile(optimizer=Adam(lr=0.0005), loss=custom_loss)
 
-predict = Model(input=[input], output=[probs])
+policy_model, predict_model = build_model()
 
-agent = Agent(action_size, policy, predict)
+agent = REINFORCEAgent(state_size, action_size, policy_model, predict_model)
 
 
 def generate_session(t_max=1000):
@@ -136,7 +155,8 @@ def generate_session(t_max=1000):
         reward += r
 
         s = new_s
-        if done: break
+        if done:
+            break
 
     agent.learn()
 
